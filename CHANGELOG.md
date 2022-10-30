@@ -1,3 +1,8 @@
+### 2022-10-30
+
+- Add the `strict` Typescript option
+- Upgrade to the React 18 API
+
 ### 2022-10-21
 
 - Begin to use SQLite -- use the `fix_electron20_build` branch of a fork of `better-sqlite3`
