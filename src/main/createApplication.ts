@@ -1,13 +1,13 @@
-import { app, BrowserWindow, ipcMain, IpcMainEvent, WebContents } from 'electron';
+import { app, BrowserWindow, ipcMain, IpcMainEvent, IpcMainInvokeEvent, WebContents } from 'electron';
 import fs from 'fs';
 import path from 'path';
 
+import { readConfig, writeConfig } from './configurationFile';
 import { createDotNetApi, DotNetApi } from './createDotNetApi';
 import { createSqlDatabase, SqlApi } from './createSqlDatabase';
 import { log } from './log';
 
-import type { MainApi, RendererApi } from "../shared-types";
-
+import type { Config, MainApi, RendererApi } from "../shared-types";
 declare const CORE_EXE: string;
 log(`CORE_EXE is ${CORE_EXE}`);
 
@@ -30,6 +30,9 @@ export function createApplication(webContents: WebContents): void {
     setGreeting(greeting: string): void {
       webContents.send("setGreeting", greeting);
     },
+    showConfig(config: Config): void {
+      webContents.send("showConfig", config);
+    },
   };
 
   // this is a light-weight class which implements the MainApi by binding it to BrowserWindow instance at run-time
@@ -44,13 +47,20 @@ export function createApplication(webContents: WebContents): void {
       log("setTitle");
       this.window?.setTitle(title);
     }
+
+    saveConfig(config: Config): Promise<Config> {
+      log("saveConfig");
+      writeConfig(config);
+      return Promise.resolve(config);
+    }
   }
 
   function bindIpcMain() {
     // bind ipcMain to the methods of MainApiImpl
     ipcMain.on("setTitle", (event, title) => getApi(event).setTitle(title));
+    ipcMain.handle("saveConfig", (event, config) => getApi(event).saveConfig(config));
 
-    function getApi(event: IpcMainEvent): MainApi {
+    function getApi(event: IpcMainEvent | IpcMainInvokeEvent): MainApi {
       const window = BrowserWindow.fromWebContents(event.sender);
       return new MainApiImpl(window);
     }
@@ -59,6 +69,10 @@ export function createApplication(webContents: WebContents): void {
   bindIpcMain();
 
   function onRendererLoaded(): void {
+    log("get/showConfig");
+    const config = readConfig();
+    rendererApi.showConfig(config);
+
     log("getGreeting");
     dotNetApi.getGreeting("World").then((greeting: string) => {
       log(greeting);
