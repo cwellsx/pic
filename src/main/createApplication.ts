@@ -6,6 +6,7 @@ import { readConfig, writeConfig } from './configurationFile';
 import { createDotNetApi, DotNetApi } from './createDotNetApi';
 import { createSqlDatabase, SqlApi } from './createSqlDatabase';
 import { log } from './log';
+import { readFiles } from './readFiles';
 
 import type { Config, MainApi, RendererApi } from "../shared-types";
 declare const CORE_EXE: string;
@@ -51,6 +52,9 @@ export function createApplication(webContents: WebContents): void {
     saveConfig(config: Config): Promise<Config> {
       log("saveConfig");
       writeConfig(config);
+      readFiles(config)
+        .then((paths) => log(`readFiles: found ${paths.length} files`))
+        .catch((reason) => log(`readFiles failed: ${"" + reason}`));
       return Promise.resolve(config);
     }
   }
