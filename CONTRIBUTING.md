@@ -1,3 +1,18 @@
+## Upstream template
+
+This project is based on the `sqlite` branch of this template project:
+
+- https://github.com/cwellsx/electron_forge_template
+
+Use the following commands to merge new changes if the template is updated:
+
+```
+git fetch upstream
+git merge upstream/sqlite
+```
+
+## SQLite
+
 This project includes SQLite via the `better-sqlite3` package.
 
 Apparently it needs to be rebuilt for Electron -- a standard prebuild for Node.js won't work --
