@@ -11,6 +11,7 @@ import { readFiles } from './readFiles';
 import type { Config, MainApi, RendererApi } from "../shared-types";
 declare const CORE_EXE: string;
 log(`CORE_EXE is ${CORE_EXE}`);
+log(`cwd is ${process.cwd()}`);
 
 export function createApplication(webContents: WebContents): void {
   // instantiate the DotNetApi

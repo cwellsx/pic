@@ -2,7 +2,7 @@ import { app } from 'electron';
 import fs from 'fs';
 import path from 'path';
 
-import { defaultConfig } from '../shared-types';
+import { getDefaultConfig } from '../shared-types';
 import { log } from './log';
 
 import type { Config } from "../shared-types";
@@ -13,7 +13,7 @@ log(`configPath is ${configPath}`);
 
 export function readConfig(): Config {
   if (!fs.existsSync(configDir)) fs.mkdirSync(configDir);
-  if (!fs.existsSync(configPath)) return defaultConfig;
+  if (!fs.existsSync(configPath)) return getDefaultConfig();
   const text = fs.readFileSync(configPath, { encoding: "utf8" });
   const config: Config = JSON.parse(text);
   return config;

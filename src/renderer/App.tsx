@@ -2,7 +2,7 @@ import './app.sass';
 
 import * as React from 'react';
 
-import { defaultConfig } from '../shared-types';
+import { getDefaultConfig } from '../shared-types';
 import { Dashboard } from './Dashboard';
 import { EditConfig } from './EditConfig';
 import { RootPicker } from './RootPicker';
@@ -23,7 +23,7 @@ const App: React.FunctionComponent = () => {
   const [greeting, setGreeting] = React.useState("Hello...");
 
   const [root, setRoot] = React.useState<string>("");
-  const [config, setConfig] = React.useState<Config>(defaultConfig);
+  const [config, setConfig] = React.useState<Config>(getDefaultConfig());
   const [status, setStatus] = React.useState<string>("Ready");
 
   React.useEffect(() => {

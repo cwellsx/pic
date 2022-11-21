@@ -13,7 +13,7 @@ export type Config = {
   more?: string[];
 };
 
-export const defaultConfig: Config = {
+const defaultConfig: Config = {
   paths: {
     documents: false,
     downloads: false,
@@ -21,4 +21,8 @@ export const defaultConfig: Config = {
     pictures: false,
     videos: false,
   },
+};
+
+export const getDefaultConfig: () => Config = () => {
+  return { ...defaultConfig };
 };

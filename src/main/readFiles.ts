@@ -2,7 +2,7 @@ import { app } from 'electron';
 import fs from 'fs';
 import path from 'path';
 
-import { Config, ConfigProperty } from '../shared-types';
+import { Config, ConfigProperty, getDefaultConfig } from '../shared-types';
 import { log } from './log';
 
 /*
@@ -12,19 +12,30 @@ import { log } from './log';
   This is used if the user changes the Config before the previous Reader has completed.
 */
 
-const isVerbose = false;
+// this is the list of folders for which we have verified that the list of files in SQL is up-to-date
+const isFresh: Config = getDefaultConfig();
+let current: Config = getDefaultConfig();
+
+const isVerbose = true;
 function verbose(message: string) {
   if (isVerbose) console.log(message);
 }
 
+export type FileInfo = {
+  path: string;
+  size: number; // size in bytes
+  mtimeMs: number; // modified time
+  birthtimeMs: number; // created time
+};
+
 class Reader {
   cancelled: boolean;
-  result: string[];
+  result: FileInfo[];
   config: Config;
-  resolve: (value: string[]) => void;
+  resolve: (value: FileInfo[]) => void;
   reject: (reason?: unknown) => void;
 
-  constructor(config: Config, resolve: (value: string[]) => void, reject: (reason?: unknown) => void) {
+  constructor(config: Config, resolve: (value: FileInfo[]) => void, reject: (reason?: unknown) => void) {
     this.cancelled = false;
     this.result = [];
     this.config = config;
@@ -34,7 +45,7 @@ class Reader {
 
   start(): void {
     const dirs: string[] = [];
-    Object.keys(this.config.paths).map((key) => {
+    Object.keys(this.config.paths).forEach((key) => {
       const name: ConfigProperty = key as ConfigProperty;
       if (this.config.paths[name]) {
         const path = app.getPath(name);
@@ -62,12 +73,20 @@ class Reader {
     if (this.cancelled) throw new Error("cancelled");
     const found = await fs.promises.readdir(dir, { encoding: "utf-8", withFileTypes: true });
     const dirs: string[] = [];
-    found.forEach((dirent) => {
+    found.forEach(async (dirent) => {
       if (this.cancelled) throw new Error("cancelled");
       const name = path.join(dir, dirent.name);
       verbose(`found: ${name}`);
-      if (dirent.isFile()) this.result.push(name);
-      else if (dirent.isDirectory()) dirs.push(name);
+      if (dirent.isFile()) {
+        const stat = await fs.promises.stat(name);
+        const fileInfo: FileInfo = {
+          path: name,
+          size: stat.size,
+          mtimeMs: stat.mtimeMs,
+          birthtimeMs: stat.birthtimeMs,
+        };
+        this.result.push(fileInfo);
+      } else if (dirent.isDirectory()) dirs.push(name);
     });
     await this.readAll(dirs);
   }
@@ -75,15 +94,28 @@ class Reader {
 
 let reader: Reader | undefined = undefined;
 
-export function readFiles(config: Config): Promise<string[]> {
+export function readFiles(config: Config): Promise<FileInfo[]> {
   // cancel any existing reader
   if (reader) {
     log("cancelling");
     reader.cancelled = true;
     reader = undefined;
   }
+
+  current = { ...config };
+  // see which keys are wanted and need to be refreshed
+  const wanted = { ...config };
+  let needsRefreshing = false;
+  Object.keys(wanted.paths).forEach((key) => {
+    const name: ConfigProperty = key as ConfigProperty;
+    if (wanted.paths[name]) {
+      if (isFresh.paths[name]) wanted.paths[name] = false; // this path has already been refreshed
+      else needsRefreshing = true;
+    }
+  });
+
   // create and start a new reader
-  const result = new Promise<string[]>((resolve, reject) => {
+  const result = new Promise<FileInfo[]>((resolve, reject) => {
     reader = new Reader(config, resolve, reject);
     reader.start();
   });

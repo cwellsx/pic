@@ -1,4 +1,6 @@
 import sqlite from 'better-sqlite3';
+import fs from 'fs';
+import path from 'path';
 
 // https://github.com/electron-userland/electron-forge/issues/1224#issuecomment-606649565
 // https://www.npmjs.com/package/better-sqlite3
@@ -10,7 +12,15 @@ export interface SqlApi {
 }
 
 export function createSqlDatabase(filename: string): SqlApi {
-  const db = sqlite(filename);
+  // specify location of better_sqlite3.node -- https://github.com/electron/forge/issues/3052
+  const nativeBinding = path.join(process.cwd(), ".webpack\\main\\native_modules\\build\\Release\\better_sqlite3.node");
+  const options: sqlite.Options | undefined = fs.existsSync(nativeBinding)
+    ? {
+        nativeBinding,
+      }
+    : undefined;
+
+  const db = sqlite(filename, options);
 
   const tableName = "cats";
   const createTable = db.prepare(`CREATE TABLE IF NOT EXISTS ${tableName} (name CHAR(20), age INT)`);
