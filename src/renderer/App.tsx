@@ -26,9 +26,9 @@ const App: React.FunctionComponent = () => {
   const [config, setConfig] = React.useState<Config>(getDefaultConfig());
   const [status, setStatus] = React.useState<string>("Ready");
 
-  React.useEffect(() => {
-    setStatus(root);
-  }, [root]);
+  // React.useEffect(() => {
+  //   setStatus(root);
+  // }, [root]);
 
   // define the API to pass to the bindIpc function
   // use useEffect so that we only do this once
@@ -40,6 +40,9 @@ const App: React.FunctionComponent = () => {
       },
       showConfig(config: Config): void {
         setConfig(config);
+      },
+      setStatusText(message: string): void {
+        setStatus(message);
       },
     };
     bindIpc(rendererApi);

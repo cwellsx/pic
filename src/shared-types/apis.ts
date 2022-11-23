@@ -29,6 +29,7 @@ export interface MainApi {
 export interface RendererApi {
   setGreeting: (greeting: string) => void;
   showConfig: (config: Config) => void;
+  setStatusText: (message: string) => void;
 }
 
 export type BindIpc = (rendererApi: RendererApi) => void;

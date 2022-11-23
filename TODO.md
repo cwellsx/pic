@@ -6,10 +6,12 @@ The purpose of this list to delay until later what isn't needed immediately.
 
 Minimal behaviour:
 
-- Search directories for files
-- Display files
-- Get file thumbnails
-- Integrate SQLite cache
+- Set status text - renderer
+- Create thumbnails - core
+- Display thumbnails - renderer
+- Read metadata - core
+- Save metadata - main
+- Display metadata - renderer
 
 ## Later
 

@@ -5,7 +5,7 @@ import path from 'path';
 import { readConfig, writeConfig } from './configurationFile';
 import { createDotNetApi, DotNetApi } from './createDotNetApi';
 import { createSqlDatabase, SqlApi } from './createSqlDatabase';
-import { log } from './log';
+import { log, showNumber } from './log';
 import { readFiles } from './readFiles';
 
 import type { Config, MainApi, RendererApi } from "../shared-types";
@@ -29,11 +29,14 @@ export function createApplication(webContents: WebContents): void {
 
   // implement RendererApi using webContents.send
   const rendererApi: RendererApi = {
-    setGreeting(greeting: string): void {
+    setGreeting: (greeting: string) => {
       webContents.send("setGreeting", greeting);
     },
-    showConfig(config: Config): void {
+    showConfig: (config: Config) => {
       webContents.send("showConfig", config);
+    },
+    setStatusText: (message: string) => {
+      webContents.send("setStatusText", message);
     },
   };
 
@@ -53,9 +56,15 @@ export function createApplication(webContents: WebContents): void {
     saveConfig(config: Config): Promise<Config> {
       log("saveConfig");
       writeConfig(config);
-      readFiles(config)
-        .then((paths) => log(`readFiles: found ${paths.length} files`))
-        .catch((reason) => log(`readFiles failed: ${"" + reason}`));
+      readFiles(config, rendererApi.setStatusText)
+        .then((paths) => {
+          log(`readFiles: found ${paths.length} files`);
+          rendererApi.setStatusText(`${showNumber(paths.length)} files`);
+        })
+        .catch((reason) => {
+          log(`readFiles failed: ${"" + reason}`);
+          rendererApi.setStatusText(`readFiles failed: ${"" + reason}`);
+        });
       return Promise.resolve(config);
     }
   }

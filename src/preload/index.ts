@@ -10,6 +10,7 @@ const mainApiProxy: MainApi = {
 const bindIpcRenderer = (rendererApi: RendererApi): void => {
   ipcRenderer.on("setGreeting", (event, greeting) => rendererApi.setGreeting(greeting));
   ipcRenderer.on("showConfig", (event, config) => rendererApi.showConfig(config));
+  ipcRenderer.on("setStatusText", (event, message) => rendererApi.setStatusText(message));
 };
 
 const preloadApis: PreloadApis = {

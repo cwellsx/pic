@@ -2,8 +2,12 @@ import * as process from 'process';
 
 console.log();
 
-export function log(message: string) {
+export function log(message: string): void {
   // this helps to show how long the various stages of application startup are
   const time = process.uptime();
   console.log(`${time.toFixed(3)} ${message}`);
+}
+
+export function showNumber(n: number): string {
+  return n.toLocaleString("en");
 }

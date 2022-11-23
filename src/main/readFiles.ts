@@ -16,64 +16,76 @@ import { log } from './log';
 const isFresh: Config = getDefaultConfig();
 let current: Config = getDefaultConfig();
 
-const isVerbose = true;
+const isVerbose = false;
 function verbose(message: string) {
   if (isVerbose) console.log(message);
 }
+
+type Rooted = {
+  rootName: ConfigProperty | null;
+  rootPath: string;
+  dir: string;
+};
 
 export type FileInfo = {
   path: string;
   size: number; // size in bytes
   mtimeMs: number; // modified time
   birthtimeMs: number; // created time
+  rooted: Rooted;
 };
 
-class Reader {
-  cancelled: boolean;
-  result: FileInfo[];
-  config: Config;
+type Context = {
   resolve: (value: FileInfo[]) => void;
   reject: (reason?: unknown) => void;
+  setStatusText: (message: string) => void;
+};
 
-  constructor(config: Config, resolve: (value: FileInfo[]) => void, reject: (reason?: unknown) => void) {
-    this.cancelled = false;
-    this.result = [];
-    this.config = config;
-    this.resolve = resolve;
-    this.reject = reject;
-  }
+class ReaderBase {
+  cancelled = false;
+  constructor(protected context: Context) {}
+}
 
-  start(): void {
-    const dirs: string[] = [];
-    Object.keys(this.config.paths).forEach((key) => {
+class ReadThumbs extends ReaderBase {
+  start(config: Config, files: FileInfo[]): void {}
+}
+
+class ReadFiles extends ReaderBase {
+  result: FileInfo[] = [];
+
+  start(config: Config): void {
+    this.context.setStatusText("Reading files");
+    const roots: Rooted[] = [];
+    Object.keys(config.paths).forEach((key) => {
       const name: ConfigProperty = key as ConfigProperty;
-      if (this.config.paths[name]) {
+      if (config.paths[name]) {
         const path = app.getPath(name);
-        dirs.push(path);
+        roots.push({ rootName: name, rootPath: path, dir: path });
       }
     });
-    const promise = this.readAll(dirs);
+    const promise = this.readAll(roots);
     promise
-      .then(() => this.resolve(this.result))
-      .catch((reason) => this.reject(reason))
+      .then(() => this.context.resolve(this.result))
+      .catch((reason) => this.context.reject(reason))
       .finally(() => {
         log(`finally ${this.cancelled} ${this === reader}`);
         if (this === reader) reader = undefined;
       });
   }
 
-  private async readAll(dirs: string[]): Promise<void> {
-    verbose(`readAll: ${dirs.join("\r\n")}`);
-    const promises = dirs.map((path) => this.read(path));
+  private async readAll(roots: Rooted[]): Promise<void> {
+    const promises = roots.map((rooted) => this.read(rooted));
     await Promise.all(promises);
   }
 
-  private async read(dir: string): Promise<void> {
+  private async read(rooted: Rooted): Promise<void> {
+    const dir = rooted.dir;
     verbose(`read: ${dir}`);
     if (this.cancelled) throw new Error("cancelled");
     const found = await fs.promises.readdir(dir, { encoding: "utf-8", withFileTypes: true });
-    const dirs: string[] = [];
-    found.forEach(async (dirent) => {
+    const roots: Rooted[] = [];
+    // use for of not forEach - https://stackoverflow.com/questions/37576685/using-async-await-with-a-foreach-loop
+    for (const dirent of found) {
       if (this.cancelled) throw new Error("cancelled");
       const name = path.join(dir, dirent.name);
       verbose(`found: ${name}`);
@@ -84,17 +96,18 @@ class Reader {
           size: stat.size,
           mtimeMs: stat.mtimeMs,
           birthtimeMs: stat.birthtimeMs,
+          rooted,
         };
         this.result.push(fileInfo);
-      } else if (dirent.isDirectory()) dirs.push(name);
-    });
-    await this.readAll(dirs);
+      } else if (dirent.isDirectory()) roots.push({ ...rooted, dir: name });
+    }
+    await this.readAll(roots);
   }
 }
 
-let reader: Reader | undefined = undefined;
+let reader: ReaderBase | undefined = undefined;
 
-export function readFiles(config: Config): Promise<FileInfo[]> {
+export function readFiles(config: Config, setStatusText: (message: string) => void): Promise<FileInfo[]> {
   // cancel any existing reader
   if (reader) {
     log("cancelling");
@@ -116,8 +129,10 @@ export function readFiles(config: Config): Promise<FileInfo[]> {
 
   // create and start a new reader
   const result = new Promise<FileInfo[]>((resolve, reject) => {
-    reader = new Reader(config, resolve, reject);
-    reader.start();
+    const context: Context = { resolve, reject, setStatusText };
+    const readFiles = new ReadFiles(context);
+    reader = readFiles;
+    readFiles.start(config);
   });
   // this Promise will be resolved or rejected by the Reader
   return result;
