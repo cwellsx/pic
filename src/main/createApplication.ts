@@ -6,14 +6,15 @@ import { readConfig, writeConfig } from './configurationFile';
 import { createDotNetApi, DotNetApi } from './createDotNetApi';
 import { createSqlDatabase, SqlApi } from './createSqlDatabase';
 import { log, showNumber } from './log';
-import { readFiles } from './readFiles';
+import { readFiles, registerThumbnailProtocol } from './readFiles';
 
-import type { Config, MainApi, RendererApi } from "../shared-types";
+import type { Config, FileInfo, MainApi, RendererApi } from "../shared-types";
 declare const CORE_EXE: string;
 log(`CORE_EXE is ${CORE_EXE}`);
 log(`cwd is ${process.cwd()}`);
 
 export function createApplication(webContents: WebContents): void {
+  registerThumbnailProtocol();
   // instantiate the DotNetApi
   const dotNetApi: DotNetApi = createDotNetApi(CORE_EXE);
 
@@ -35,8 +36,11 @@ export function createApplication(webContents: WebContents): void {
     showConfig: (config: Config) => {
       webContents.send("showConfig", config);
     },
-    setStatusText: (message: string) => {
-      webContents.send("setStatusText", message);
+    showStatusText: (message: string) => {
+      webContents.send("showStatusText", message);
+    },
+    showFiles: (files: FileInfo[]) => {
+      webContents.send("showFiles", files);
     },
   };
 
@@ -56,14 +60,15 @@ export function createApplication(webContents: WebContents): void {
     saveConfig(config: Config): Promise<Config> {
       log("saveConfig");
       writeConfig(config);
-      readFiles(config, rendererApi.setStatusText, dotNetApi)
-        .then((paths) => {
-          log(`readFiles: found ${paths.length} files`);
-          rendererApi.setStatusText(`${showNumber(paths.length)} files`);
+      readFiles(config, rendererApi.showStatusText, dotNetApi)
+        .then((files) => {
+          log(`readFiles: found ${files.length} files`);
+          rendererApi.showStatusText(`${showNumber(files.length)} files`);
+          rendererApi.showFiles(files);
         })
         .catch((reason) => {
           log(`readFiles failed: ${"" + reason}`);
-          rendererApi.setStatusText(`readFiles failed: ${"" + reason}`);
+          rendererApi.showStatusText(`readFiles failed: ${"" + reason}`);
         });
       return Promise.resolve(config);
     }

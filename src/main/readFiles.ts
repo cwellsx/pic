@@ -1,8 +1,8 @@
-import { app } from 'electron';
+import { app, protocol } from 'electron';
 import fs from 'fs/promises';
 import path from 'path';
 
-import { Config, ConfigProperty, getDefaultConfig } from '../shared-types';
+import { Config, ConfigProperty, FileInfo, FileStatus, getDefaultConfig, Rooted } from '../shared-types';
 import { readFileExtensions } from './configurationFile';
 import { DotNetApi } from './createDotNetApi';
 import { log } from './log';
@@ -23,28 +23,10 @@ function verbose(message: string) {
   if (isVerbose) console.log(message);
 }
 
-type Rooted = {
-  readonly rootName: ConfigProperty | null;
-  readonly rootDir: string;
-  readonly leafDir: string;
-};
-
-export type FileStatus = {
-  readonly path: string;
-  readonly size: number; // size in bytes
-  readonly mtimeMs: number; // modified time
-  readonly birthtimeMs: number; // created time
-  readonly rooted: Rooted;
-};
-
-export type FileInfo = FileStatus & {
-  readonly thumbnailPath: string;
-};
-
 type Context = {
   readonly resolve: (value: FileInfo[]) => void;
   readonly reject: (reason?: unknown) => void;
-  readonly setStatusText: (message: string) => void;
+  readonly showStatusText: (message: string) => void;
   readonly dotNetApi: DotNetApi;
 };
 
@@ -61,7 +43,7 @@ class ReadThumbnails extends ReaderBase {
   intervalObj?: NodeJS.Timer;
 
   start(config: Config, files: FileStatus[]): void {
-    this.context.setStatusText("Reading thumbnails");
+    this.context.showStatusText("Reading thumbnails");
     this.startTimer();
     this.total = files.length;
     const promise = this.readAll(config, files);
@@ -91,7 +73,7 @@ class ReadThumbnails extends ReaderBase {
         else verbose(`${thumbnailPath} failed`);
       } else verbose(`${thumbnailPath} already exists`);
 
-      result.push({ ...fileStatus, thumbnailPath });
+      result.push({ ...fileStatus, thumbnailPath: "pic://" + encodeURI(thumbnailPath) });
     }
     return result;
   }
@@ -100,7 +82,7 @@ class ReadThumbnails extends ReaderBase {
     this.intervalObj = setInterval(() => {
       verbose("setInterval is running");
       const percent = Math.round((100 * this.index) / this.total);
-      this.context.setStatusText(`Reading thumbnails - ${percent}% (${this.index} of ${this.total})`);
+      this.context.showStatusText(`Reading thumbnails - ${percent}% (${this.index} of ${this.total})`);
       verbose("setInterval is returning");
     }, 1000);
   }
@@ -131,7 +113,7 @@ class ReadFiles extends ReaderBase {
   fileExtensions: Set<string> = new Set<string>(readFileExtensions());
 
   start(config: Config): void {
-    this.context.setStatusText("Reading files");
+    this.context.showStatusText("Reading files");
     const roots: Rooted[] = [];
     Object.keys(config.paths).forEach((key) => {
       const name: ConfigProperty = key as ConfigProperty;
@@ -200,7 +182,7 @@ let reader: ReaderBase | undefined = undefined;
 
 export function readFiles(
   config: Config,
-  setStatusText: (message: string) => void,
+  showStatusText: (message: string) => void,
   dotNetApi: DotNetApi
 ): Promise<FileInfo[]> {
   // cancel any existing reader
@@ -224,11 +206,25 @@ export function readFiles(
 
   // create and start a new reader
   const result = new Promise<FileInfo[]>((resolve, reject) => {
-    const context: Context = { resolve, reject, setStatusText, dotNetApi };
+    const context: Context = { resolve, reject, showStatusText, dotNetApi };
     const readFiles = new ReadFiles(context);
     reader = readFiles;
     readFiles.start(config);
   });
   // this Promise will be resolved or rejected by the Reader
   return result;
+}
+
+// https://github.com/nklayman/vue-cli-plugin-electron-builder/issues/742
+export function registerThumbnailProtocol() {
+  protocol.registerFileProtocol("pic", (request, callback) => {
+    const url = request.url.replace(/^pic:\/\//, "");
+    // Decode URL to prevent errors when loading filenames with UTF-8 chars or chars like "#"
+    const decodedUrl = decodeURI(url); // Needed in case URL contains spaces
+    try {
+      return callback(decodedUrl);
+    } catch (error) {
+      console.error("ERROR: registerLocalResourceProtocol: Could not get file path:", error);
+    }
+  });
 }

@@ -1,4 +1,5 @@
 import { Config } from './config';
+import { FileInfo } from './fileInfo';
 
 /*
   The underlying APIs, which the application-specific classes wrap, are:
@@ -29,7 +30,8 @@ export interface MainApi {
 export interface RendererApi {
   setGreeting: (greeting: string) => void;
   showConfig: (config: Config) => void;
-  setStatusText: (message: string) => void;
+  showStatusText: (message: string) => void;
+  showFiles: (files: FileInfo[]) => void;
 }
 
 export type BindIpc = (rendererApi: RendererApi) => void;

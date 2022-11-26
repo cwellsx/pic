@@ -2,14 +2,14 @@ import './app.sass';
 
 import * as React from 'react';
 
-import { getDefaultConfig } from '../shared-types';
-import { Dashboard } from './Dashboard';
+import { FileInfo, getDefaultConfig } from '../shared-types';
 import { EditConfig } from './EditConfig';
 import { RootPicker } from './RootPicker';
+import { ShowFiles } from './ShowFiles';
+import { ShowGreeting } from './ShowGreeting';
 import { StatusBar } from './StatusBar';
 
 import type { BindIpc, Config, MainApi, PreloadApis, RendererApi } from "../shared-types";
-
 declare global {
   export interface Window {
     preloadApis: PreloadApis;
@@ -25,6 +25,7 @@ const App: React.FunctionComponent = () => {
   const [root, setRoot] = React.useState<string>("");
   const [config, setConfig] = React.useState<Config>(getDefaultConfig());
   const [status, setStatus] = React.useState<string>("Ready");
+  const [files, setFiles] = React.useState<FileInfo[]>([]);
 
   // React.useEffect(() => {
   //   setStatus(root);
@@ -41,12 +42,15 @@ const App: React.FunctionComponent = () => {
       showConfig(config: Config): void {
         setConfig(config);
       },
-      setStatusText(message: string): void {
+      showStatusText(message: string): void {
         setStatus(message);
+      },
+      showFiles(files: FileInfo[]): void {
+        setFiles(files);
       },
     };
     bindIpc(rendererApi);
-  });
+  }, []);
 
   const saveConfig = async (config: Config): Promise<void> => {
     // pass the new config to the main process and afterwards into local state
@@ -65,10 +69,10 @@ const App: React.FunctionComponent = () => {
         <StatusBar status={status} />
       </div>
       <div id="main">
-        <Dashboard greeting={greeting} />
+        <ShowGreeting greeting={greeting} />
+        <RootPicker root={root} setRoot={setRoot} />
+        <ShowFiles files={files} />
       </div>
-
-      <RootPicker root={root} setRoot={setRoot} />
     </React.StrictMode>
   );
 };

@@ -6,7 +6,6 @@ The purpose of this list to delay until later what isn't needed immediately.
 
 Minimal behaviour:
 
-- Create thumbnails - core
 - Display thumbnails - renderer
 - Read metadata - core
 - Save metadata - main
