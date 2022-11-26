@@ -6,8 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="ElectronCgi.DotNet" Version="1.0.3" />
-    <PackageReference Include="System.Drawing.Common" Version="5.0.3" />
+    <ProjectReference Include="..\src.dotnet\Core.csproj" />
   </ItemGroup>
 
 </Project>

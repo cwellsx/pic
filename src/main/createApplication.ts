@@ -56,7 +56,7 @@ export function createApplication(webContents: WebContents): void {
     saveConfig(config: Config): Promise<Config> {
       log("saveConfig");
       writeConfig(config);
-      readFiles(config, rendererApi.setStatusText)
+      readFiles(config, rendererApi.setStatusText, dotNetApi)
         .then((paths) => {
           log(`readFiles: found ${paths.length} files`);
           rendererApi.setStatusText(`${showNumber(paths.length)} files`);

@@ -6,7 +6,6 @@ The purpose of this list to delay until later what isn't needed immediately.
 
 Minimal behaviour:
 
-- Set status text - renderer
 - Create thumbnails - core
 - Display thumbnails - renderer
 - Read metadata - core
@@ -29,12 +28,21 @@ Use a layout manager with dockable panels -- for example:
 - https://npm.io/package/flexlayout-react
 - https://github.com/caplin/FlexLayout#alternative-layout-managers
 
-### Electron Forge v6.0.0
+### C++ instead of C#
 
-Per https://github.com/electron/forge/releases/tag/v6.0.0 there are some breaking changes in the
-v6.0.0 compared to the late beta version that I'm currently using in this project.
+Use C++ instead of C# to access the shell API:
 
-I should also update my 'resource plugin' and 'template' project.
+- https://github.com/microsoft/Windows-classic-samples/tree/main/Samples/Win7Samples/winui/shell/appplatform/UsingImageFactory
+
+This implies porting the `ElectronCgi.DotNet` package implementation to .NET which may be non-trivial, see also:
+
+- https://www.tangiblesoftwaresolutions.com/product_details/csharp_to_cplusplus_converter_details.html
+
+### File Extensions
+
+- Discover at run-time which file extensions exist.
+- Display the the list of file extensions
+- Configure which extensions are included
 
 ## Done
 

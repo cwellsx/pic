@@ -24,3 +24,9 @@ export function writeConfig(config: Config): void {
   const text = JSON.stringify(config);
   fs.writeFileSync(configPath, text, { encoding: "utf8" });
 }
+
+export function readFileExtensions(): string[] {
+  const images = ["jpg", "jpeg", "jpe", "jfif", "gif", "tif", "tiff", "bmp", "dib", "png", "ico", "heic", "webp"];
+  const videos = ["mp4", "wmv", "flv", "avi", "mpg", "mpeg", "mkv", "ts"];
+  return images.concat(videos);
+}
