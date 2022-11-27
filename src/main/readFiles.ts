@@ -1,9 +1,10 @@
-import { app, protocol } from 'electron';
+import { app } from 'electron';
 import fs from 'fs/promises';
 import path from 'path';
 
 import { Config, ConfigProperty, FileInfo, FileStatus, getDefaultConfig, Rooted } from '../shared-types';
 import { readFileExtensions } from './configurationFile';
+import { convertPathToUrl } from './convertPathToUrl';
 import { DotNetApi } from './createDotNetApi';
 import { log } from './log';
 
@@ -72,8 +73,9 @@ class ReadThumbnails extends ReaderBase {
           verbose(`${thumbnailPath} created`);
         else verbose(`${thumbnailPath} failed`);
       } else verbose(`${thumbnailPath} already exists`);
-
-      result.push({ ...fileStatus, thumbnailPath: "pic://" + encodeURI(thumbnailPath) });
+      const thumbnailUrl = convertPathToUrl(thumbnailPath);
+      verbose(`thumbnailUrl: ${thumbnailUrl}`);
+      result.push({ ...fileStatus, thumbnailUrl });
     }
     return result;
   }
@@ -213,18 +215,4 @@ export function readFiles(
   });
   // this Promise will be resolved or rejected by the Reader
   return result;
-}
-
-// https://github.com/nklayman/vue-cli-plugin-electron-builder/issues/742
-export function registerThumbnailProtocol() {
-  protocol.registerFileProtocol("pic", (request, callback) => {
-    const url = request.url.replace(/^pic:\/\//, "");
-    // Decode URL to prevent errors when loading filenames with UTF-8 chars or chars like "#"
-    const decodedUrl = decodeURI(url); // Needed in case URL contains spaces
-    try {
-      return callback(decodedUrl);
-    } catch (error) {
-      console.error("ERROR: registerLocalResourceProtocol: Could not get file path:", error);
-    }
-  });
 }

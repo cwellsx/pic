@@ -3,10 +3,11 @@ import fs from 'fs';
 import path from 'path';
 
 import { readConfig, writeConfig } from './configurationFile';
+import { registerFileProtocol } from './convertPathToUrl';
 import { createDotNetApi, DotNetApi } from './createDotNetApi';
 import { createSqlDatabase, SqlApi } from './createSqlDatabase';
 import { log, showNumber } from './log';
-import { readFiles, registerThumbnailProtocol } from './readFiles';
+import { readFiles } from './readFiles';
 
 import type { Config, FileInfo, MainApi, RendererApi } from "../shared-types";
 declare const CORE_EXE: string;
@@ -14,7 +15,7 @@ log(`CORE_EXE is ${CORE_EXE}`);
 log(`cwd is ${process.cwd()}`);
 
 export function createApplication(webContents: WebContents): void {
-  registerThumbnailProtocol();
+  registerFileProtocol();
   // instantiate the DotNetApi
   const dotNetApi: DotNetApi = createDotNetApi(CORE_EXE);
 

@@ -20,7 +20,7 @@ export const ShowFiles: React.FunctionComponent<ShowFilesProps> = (props: ShowFi
     <div id="showFiles">
       {files.map((file) => (
         <div className="item" key={file.path}>
-          <img src={file.thumbnailPath} />
+          <img src={file.thumbnailUrl} />
           <span>{getFilename(file)}</span>
         </div>
       ))}

@@ -15,5 +15,5 @@ export type FileStatus = {
 };
 
 export type FileInfo = FileStatus & {
-  readonly thumbnailPath: string;
+  readonly thumbnailUrl: string;
 };
