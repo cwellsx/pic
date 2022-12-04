@@ -6,18 +6,28 @@ The purpose of this list to delay until later what isn't needed immediately.
 
 Minimal behaviour:
 
-- Display thumbnails - renderer
-- Read metadata - core
-- Save metadata - main
-- Display metadata - renderer
+- Save properties - main
+- Display properties - renderer
+- Sort by properties - renderer
+- Group by properties - renderer
+- Filter by properties - renderer
+- Add tags - renderer + main
 
 ## Later
 
-### More features
+### More Shell integration
+
+Implement more functionality that's normally available in Explorer:
 
 - Export
-- Search
-- Tags
+  - Select multiple files
+  - Copy to a temp directory
+  - Send to email
+- Launch file in editor or viewer
+
+### Edit video thumbnails
+
+Choose the location from which the thumbnail is extracted, maybe by using a `<video>` element.
 
 ### Docking
 
@@ -27,25 +37,17 @@ Use a layout manager with dockable panels -- for example:
 - https://npm.io/package/flexlayout-react
 - https://github.com/caplin/FlexLayout#alternative-layout-managers
 
-### C++ instead of C#
-
-Use C++ instead of C# to access the shell API:
-
-- https://github.com/microsoft/Windows-classic-samples/tree/main/Samples/Win7Samples/winui/shell/appplatform/UsingImageFactory
-
-This implies porting the `ElectronCgi.DotNet` package implementation to .NET which may be non-trivial, see also:
-
-- https://www.tangiblesoftwaresolutions.com/product_details/csharp_to_cplusplus_converter_details.html
-
-### File Extensions
+### File extensions
 
 - Discover at run-time which file extensions exist.
 - Display the the list of file extensions
 - Configure which extensions are included
 
-## Done
+### Packing
 
-Application template:
+- Package the .NET code so that it runs on any machine -- https://learn.microsoft.com/en-us/dotnet/core/deploying/
 
-- Architecture
-- Build tools
+### Reverse geocoding
+
+- Implement reverse geocoding to convert photo GPS coordinates to a place name
+- Or support a database table of user-defined places

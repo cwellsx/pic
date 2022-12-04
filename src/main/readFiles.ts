@@ -67,10 +67,16 @@ class ReadThumbnails extends ReaderBase {
       if (this.cancelled) throw new Error("cancelled");
       const isThumbnail = await ReadThumbnails.isThumbnail(thumbnailPath, fileStatus);
       if (this.cancelled) throw new Error("cancelled");
-      if (!isThumbnail) {
+      const isProperties = false;
+      if (!isThumbnail || !isProperties) {
         verbose(`createThumbnail(${thumbnailPath})`);
-        if (await this.context.dotNetApi.createThumbnail({ path: fileStatus.path, thumbnailPath }))
-          verbose(`${thumbnailPath} created`);
+        const response = await this.context.dotNetApi.createThumbnail({
+          path: fileStatus.path,
+          thumbnailPath,
+          wantThumbnail: !isThumbnail,
+          wantProperties: !isProperties,
+        });
+        if (!response.exception) verbose(`${thumbnailPath} created`);
         else verbose(`${thumbnailPath} failed`);
       } else verbose(`${thumbnailPath} already exists`);
       const thumbnailUrl = convertPathToUrl(thumbnailPath);

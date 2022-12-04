@@ -6,11 +6,18 @@ import { log } from './log';
 export type ThumbnailRequest = {
   path: string;
   thumbnailPath: string;
+  wantThumbnail: boolean;
+  wantProperties: boolean;
+};
+
+export type ThumbnailResponse = {
+  properties: string;
+  exception: string;
 };
 
 export interface DotNetApi {
   getGreeting: (name: string) => Promise<string>;
-  createThumbnail: (request: ThumbnailRequest) => Promise<boolean>;
+  createThumbnail: (request: ThumbnailRequest) => Promise<ThumbnailResponse>;
 }
 
 export function createDotNetApi(command: string, ...args: string[]): DotNetApi {
@@ -22,8 +29,8 @@ export function createDotNetApi(command: string, ...args: string[]): DotNetApi {
     getGreeting(name: string): Promise<string> {
       return connection.send("getGreeting", name) as Promise<string>;
     },
-    createThumbnail(request: ThumbnailRequest): Promise<boolean> {
-      return connection.send("createThumbnail", request) as Promise<boolean>;
+    createThumbnail(request: ThumbnailRequest): Promise<ThumbnailResponse> {
+      return connection.send("createThumbnail", request) as Promise<ThumbnailResponse>;
     },
   };
 
