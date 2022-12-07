@@ -96,7 +96,7 @@ export function createApplication(webContents: WebContents): void {
     log("getGreeting");
     dotNetApi.getGreeting("World").then((greeting: string) => {
       log(greeting);
-      const names = sqlApi.selectNames().join(", ");
+      const names = sqlApi.selectCats().join(", ");
       log(names);
       rendererApi.setGreeting(`${greeting} from ${names}!`);
     });
