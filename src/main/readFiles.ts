@@ -17,7 +17,6 @@ import { log } from './log';
 
 // this is the list of folders for which we have verified that the list of files in SQL is up-to-date
 const isFresh: Config = getDefaultConfig();
-let current: Config = getDefaultConfig();
 
 const isVerbose = false;
 function verbose(message: string) {
@@ -31,6 +30,11 @@ type Context = {
   readonly dotNetApi: DotNetApi;
 };
 
+type RootedFiles<T> = {
+  rooted: Rooted;
+  result: T[];
+};
+
 const thumbnailDirectories = new Set<string>();
 
 class ReaderBase {
@@ -41,13 +45,13 @@ class ReaderBase {
 class ReadThumbnails extends ReaderBase {
   index = 0;
   total = 0;
+  rooted: Rooted | undefined;
   intervalObj?: NodeJS.Timer;
 
-  start(config: Config, files: FileStatus[]): void {
+  start(roots: RootedFiles<FileStatus>[]): void {
     this.context.showStatusText("Reading thumbnails");
     this.startTimer();
-    this.total = files.length;
-    const promise = this.readAll(config, files);
+    const promise = this.readAll(roots);
     promise
       .then((value) => this.context.resolve(value))
       .catch((reason) => this.context.reject(reason))
@@ -58,8 +62,16 @@ class ReadThumbnails extends ReaderBase {
       });
   }
 
-  private async readAll(config: Config, files: FileStatus[]): Promise<FileInfo[]> {
+  private async readAll(roots: RootedFiles<FileStatus>[]): Promise<FileInfo[]> {
     const result: FileInfo[] = [];
+    for (const root of roots) await this.readRoot(root, result);
+    return result;
+  }
+
+  private async readRoot(root: RootedFiles<FileStatus>, result: FileInfo[]): Promise<void> {
+    this.rooted = root.rooted;
+    const files = root.result;
+    this.total = files.length;
     for (this.index = 0; this.index < this.total; ++this.index) {
       if (this.cancelled) throw new Error("cancelled");
       const fileStatus = files[this.index];
@@ -83,14 +95,14 @@ class ReadThumbnails extends ReaderBase {
       verbose(`thumbnailUrl: ${thumbnailUrl}`);
       result.push({ ...fileStatus, thumbnailUrl });
     }
-    return result;
   }
 
   private startTimer(): void {
     this.intervalObj = setInterval(() => {
       verbose("setInterval is running");
       const percent = Math.round((100 * this.index) / this.total);
-      this.context.showStatusText(`Reading thumbnails - ${percent}% (${this.index} of ${this.total})`);
+      const name = this.rooted?.rootName ?? this.rooted?.rootDir;
+      this.context.showStatusText(`Reading ${name} - ${percent}% (${this.index} of ${this.total})`);
       verbose("setInterval is returning");
     }, 1000);
   }
@@ -117,22 +129,18 @@ class ReadThumbnails extends ReaderBase {
 }
 
 class ReadFiles extends ReaderBase {
-  result: FileStatus[] = [];
   fileExtensions: Set<string> = new Set<string>(readFileExtensions());
 
-  start(config: Config): void {
+  start(roots: RootedFiles<FileStatus>[]): void {
     this.context.showStatusText("Reading files");
-    const roots: Rooted[] = [];
-    Object.keys(config.paths).forEach((key) => {
-      const name: ConfigProperty = key as ConfigProperty;
-      if (config.paths[name]) {
-        const dir = app.getPath(name);
-        roots.push({ rootName: name, rootDir: dir, leafDir: dir });
-      }
-    });
     const promise = this.readAll(roots);
     promise
-      .then(() => this.readThumbnails(config))
+      .then(() => {
+        // change state: new reader instance is ReadThumbnails instead of ReadFiles
+        const readFiles = new ReadThumbnails(this.context);
+        reader = readFiles;
+        readFiles.start(roots);
+      })
       .catch((reason) => this.context.reject(reason))
       .finally(() => {
         log(`finally ${this.cancelled} ${this === reader}`);
@@ -140,24 +148,18 @@ class ReadFiles extends ReaderBase {
       });
   }
 
-  private readThumbnails(config: Config) {
-    // change state: new reader instance is ReadThumbnails instead of ReadFiles
-    const readFiles = new ReadThumbnails(this.context);
-    reader = readFiles;
-    readFiles.start(config, this.result);
-  }
-
-  private async readAll(roots: Rooted[]): Promise<void> {
+  private async readAll(roots: RootedFiles<FileStatus>[]): Promise<void> {
     const promises = roots.map((rooted) => this.read(rooted));
     await Promise.all(promises);
   }
 
-  private async read(rooted: Rooted): Promise<void> {
+  private async read(data: RootedFiles<FileStatus>): Promise<void> {
+    const rooted = data.rooted;
     const dir = rooted.leafDir;
     verbose(`read: ${dir}`);
     if (this.cancelled) throw new Error("cancelled");
     const found = await fs.readdir(dir, { encoding: "utf-8", withFileTypes: true });
-    const roots: Rooted[] = [];
+    const roots: RootedFiles<FileStatus>[] = [];
     // use for of not forEach - https://stackoverflow.com/questions/37576685/using-async-await-with-a-foreach-loop
     for (const dirent of found) {
       if (this.cancelled) throw new Error("cancelled");
@@ -173,8 +175,10 @@ class ReadFiles extends ReaderBase {
           birthtimeMs: stat.birthtimeMs,
           rooted,
         };
-        this.result.push(fileStatus);
-      } else if (dirent.isDirectory() && dirent.name !== ".pic") roots.push({ ...rooted, leafDir: name });
+        data.result.push(fileStatus);
+      } else if (dirent.isDirectory() && dirent.name !== ".pic")
+        // same array of result, similar rooted except different leafDir
+        roots.push({ rooted: { ...rooted, leafDir: name }, result: data.result });
     }
     await this.readAll(roots);
   }
@@ -200,7 +204,6 @@ export function readFiles(
     reader = undefined;
   }
 
-  current = { ...config };
   // see which keys are wanted and need to be refreshed
   const wanted = { ...config };
   let needsRefreshing = false;
@@ -212,12 +215,23 @@ export function readFiles(
     }
   });
 
+  // instantiate the RootedFile instances
+  const roots: RootedFiles<FileStatus>[] = [];
+  Object.keys(config.paths).forEach((key) => {
+    const name: ConfigProperty = key as ConfigProperty;
+    if (config.paths[name]) {
+      const dir = app.getPath(name);
+      const rooted: Rooted = { rootName: name, rootDir: dir, leafDir: dir };
+      roots.push({ rooted, result: [] });
+    }
+  });
+
   // create and start a new reader
   const result = new Promise<FileInfo[]>((resolve, reject) => {
     const context: Context = { resolve, reject, showStatusText, dotNetApi };
     const readFiles = new ReadFiles(context);
     reader = readFiles;
-    readFiles.start(config);
+    readFiles.start(roots);
   });
   // this Promise will be resolved or rejected by the Reader
   return result;
