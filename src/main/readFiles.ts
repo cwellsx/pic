@@ -7,6 +7,7 @@ import { readFileExtensions } from './configurationFile';
 import { convertPathToUrl } from './convertPathToUrl';
 import { DotNetApi } from './createDotNetApi';
 import { log } from './log';
+import { createSqlCache } from './sqlCache';
 
 /*
   I guess there's no point in multi-threading this using workers because it will be I/O-bound and not CPU-bound.
@@ -30,12 +31,42 @@ type Context = {
   readonly dotNetApi: DotNetApi;
 };
 
-type RootedFiles<T> = {
+type RootedFiles = {
   rooted: Rooted;
-  result: T[];
+  result: FileStatus[];
 };
 
 const thumbnailDirectories = new Set<string>();
+
+async function getThumbnailExists(thumbnailPath: string, fileStatus: FileStatus): Promise<boolean> {
+  try {
+    const stat = await fs.stat(thumbnailPath);
+    return stat.mtimeMs > fileStatus.mtimeMs;
+  } catch {
+    return false;
+  }
+}
+
+async function getThumbnailDir(rooted: Rooted): Promise<string> {
+  const directory = path.join(rooted.rootDir, ".pic", path.relative(rooted.rootDir, rooted.leafDir));
+  if (!thumbnailDirectories.has(directory)) {
+    verbose(`creating directory ${directory}`);
+    await fs.mkdir(directory, { recursive: true });
+    thumbnailDirectories.add(directory);
+  }
+  return directory;
+}
+
+async function getThumbnailPath(rooted: Rooted, filePath: string): Promise<string> {
+  const filename = path.basename(filePath, path.extname(filePath)) + ".jpg";
+  const directory = await getThumbnailDir(rooted);
+  return path.join(directory, filename);
+}
+
+async function getDatabasePath(rooted: Rooted): Promise<string> {
+  const directory = await getThumbnailDir(rooted);
+  return path.join(directory, "pic.db");
+}
 
 class ReaderBase {
   cancelled = false;
@@ -48,7 +79,7 @@ class ReadThumbnails extends ReaderBase {
   rooted: Rooted | undefined;
   intervalObj?: NodeJS.Timer;
 
-  start(roots: RootedFiles<FileStatus>[]): void {
+  start(roots: RootedFiles[]): void {
     this.context.showStatusText("Reading thumbnails");
     this.startTimer();
     const promise = this.readAll(roots);
@@ -62,76 +93,70 @@ class ReadThumbnails extends ReaderBase {
       });
   }
 
-  private async readAll(roots: RootedFiles<FileStatus>[]): Promise<FileInfo[]> {
+  private async readAll(roots: RootedFiles[]): Promise<FileInfo[]> {
     const result: FileInfo[] = [];
     for (const root of roots) await this.readRoot(root, result);
     return result;
   }
 
-  private async readRoot(root: RootedFiles<FileStatus>, result: FileInfo[]): Promise<void> {
+  private async readRoot(root: RootedFiles, result: FileInfo[]): Promise<void> {
     this.rooted = root.rooted;
     const files = root.result;
     this.total = files.length;
-    for (this.index = 0; this.index < this.total; ++this.index) {
-      if (this.cancelled) throw new Error("cancelled");
-      const fileStatus = files[this.index];
-      const thumbnailPath = await ReadThumbnails.getThumbnailPath(fileStatus.rooted, fileStatus.path);
-      if (this.cancelled) throw new Error("cancelled");
-      const isThumbnail = await ReadThumbnails.isThumbnail(thumbnailPath, fileStatus);
-      if (this.cancelled) throw new Error("cancelled");
-      const isProperties = false;
-      if (!isThumbnail || !isProperties) {
-        verbose(`createThumbnail(${thumbnailPath})`);
-        const response = await this.context.dotNetApi.createThumbnail({
-          path: fileStatus.path,
-          thumbnailPath,
-          wantThumbnail: !isThumbnail,
-          wantProperties: !isProperties,
-        });
-        if (!response.exception) verbose(`${thumbnailPath} created`);
-        else verbose(`${thumbnailPath} failed`);
-      } else verbose(`${thumbnailPath} already exists`);
-      const thumbnailUrl = convertPathToUrl(thumbnailPath);
-      verbose(`thumbnailUrl: ${thumbnailUrl}`);
-      result.push({ ...fileStatus, thumbnailUrl });
+    const sqlCache = createSqlCache(await getDatabasePath(root.rooted));
+    try {
+      for (this.index = 0; this.index < this.total; ++this.index) {
+        if (this.cancelled) throw new Error("cancelled");
+        const fileStatus = files[this.index];
+        const thumbnailPath = await getThumbnailPath(fileStatus, fileStatus.path);
+        if (this.cancelled) throw new Error("cancelled");
+        const isThumbnail = await getThumbnailExists(thumbnailPath, fileStatus);
+        if (this.cancelled) throw new Error("cancelled");
+
+        let fileInfo = sqlCache.read(fileStatus);
+        if (!isThumbnail || !fileInfo) {
+          verbose(`createThumbnail(${thumbnailPath}, ${!isThumbnail}, ${!fileInfo})`);
+          try {
+            const fileProperties = await this.context.dotNetApi.createThumbnail({
+              path: fileStatus.path,
+              thumbnailPath,
+              wantThumbnail: !isThumbnail,
+              wantProperties: !fileInfo,
+            });
+            verbose(`${thumbnailPath} created`);
+            if (!fileInfo) {
+              const thumbnailUrl = convertPathToUrl(thumbnailPath);
+              verbose(`thumbnailUrl: ${thumbnailUrl}`);
+              fileInfo = { ...fileProperties, ...fileStatus, thumbnailUrl };
+              sqlCache.save(fileInfo);
+            }
+          } catch (e) {
+            verbose(`${thumbnailPath} failed`);
+            continue;
+          }
+        } else verbose(`${thumbnailPath} already exists`);
+        result.push(fileInfo);
+      }
+    } finally {
+      sqlCache.done();
     }
   }
 
   private startTimer(): void {
-    this.intervalObj = setInterval(() => {
-      verbose("setInterval is running");
-      const percent = Math.round((100 * this.index) / this.total);
-      const name = this.rooted?.rootName ?? this.rooted?.rootDir;
-      this.context.showStatusText(`Reading ${name} - ${percent}% (${this.index} of ${this.total})`);
-      verbose("setInterval is returning");
-    }, 1000);
+    this.intervalObj = setInterval(() => this.showStatusText(), 1000);
   }
 
-  private static async isThumbnail(thumbnailPath: string, fileStatus: FileStatus): Promise<boolean> {
-    try {
-      const stat = await fs.stat(thumbnailPath);
-      return stat.mtimeMs > fileStatus.mtimeMs;
-    } catch {
-      return false;
-    }
-  }
-
-  private static async getThumbnailPath(rooted: Rooted, filePath: string): Promise<string> {
-    const filename = path.basename(filePath, path.extname(filePath)) + ".jpg";
-    const directory = path.join(rooted.rootDir, ".pic", path.relative(rooted.rootDir, rooted.leafDir));
-    if (!thumbnailDirectories.has(directory)) {
-      verbose(`creating directory ${directory}`);
-      await fs.mkdir(directory, { recursive: true });
-      thumbnailDirectories.add(directory);
-    }
-    return path.join(directory, filename);
+  private showStatusText(): void {
+    const percent = Math.round((100 * this.index) / this.total);
+    const name = this.rooted?.rootName ?? this.rooted?.rootDir;
+    this.context.showStatusText(`Reading ${name} - ${percent}% (${this.index} of ${this.total})`);
   }
 }
 
 class ReadFiles extends ReaderBase {
   fileExtensions: Set<string> = new Set<string>(readFileExtensions());
 
-  start(roots: RootedFiles<FileStatus>[]): void {
+  start(roots: RootedFiles[]): void {
     this.context.showStatusText("Reading files");
     const promise = this.readAll(roots);
     promise
@@ -148,18 +173,18 @@ class ReadFiles extends ReaderBase {
       });
   }
 
-  private async readAll(roots: RootedFiles<FileStatus>[]): Promise<void> {
+  private async readAll(roots: RootedFiles[]): Promise<void> {
     const promises = roots.map((rooted) => this.read(rooted));
     await Promise.all(promises);
   }
 
-  private async read(data: RootedFiles<FileStatus>): Promise<void> {
-    const rooted = data.rooted;
+  private async read(root: RootedFiles): Promise<void> {
+    const rooted = root.rooted;
     const dir = rooted.leafDir;
     verbose(`read: ${dir}`);
     if (this.cancelled) throw new Error("cancelled");
     const found = await fs.readdir(dir, { encoding: "utf-8", withFileTypes: true });
-    const roots: RootedFiles<FileStatus>[] = [];
+    const subroots: RootedFiles[] = [];
     // use for of not forEach - https://stackoverflow.com/questions/37576685/using-async-await-with-a-foreach-loop
     for (const dirent of found) {
       if (this.cancelled) throw new Error("cancelled");
@@ -173,14 +198,14 @@ class ReadFiles extends ReaderBase {
           size: stat.size,
           mtimeMs: stat.mtimeMs,
           birthtimeMs: stat.birthtimeMs,
-          rooted,
+          ...rooted,
         };
-        data.result.push(fileStatus);
+        root.result.push(fileStatus);
       } else if (dirent.isDirectory() && dirent.name !== ".pic")
         // same array of result, similar rooted except different leafDir
-        roots.push({ rooted: { ...rooted, leafDir: name }, result: data.result });
+        subroots.push({ rooted: { ...rooted, leafDir: name }, result: root.result });
     }
-    await this.readAll(roots);
+    await this.readAll(subroots);
   }
 
   private isWantedExtension(name: string): boolean {
@@ -216,7 +241,7 @@ export function readFiles(
   });
 
   // instantiate the RootedFile instances
-  const roots: RootedFiles<FileStatus>[] = [];
+  const roots: RootedFiles[] = [];
   Object.keys(config.paths).forEach((key) => {
     const name: ConfigProperty = key as ConfigProperty;
     if (config.paths[name]) {

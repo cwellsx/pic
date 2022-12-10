@@ -40,7 +40,17 @@ export class SqlTable<T extends object> {
     const insert = `INSERT INTO ${tableName} (${keys.join(", ")}) VALUES (${values.join(", ")})`;
     const insertStmt = db.prepare(insert);
 
+    const index = keys.indexOf(primaryKey);
+    if (index === -1) throw new Error("primaryKey not found");
+    keys.splice(index, 1);
+    values.splice(index, 1);
+    const update = `UPDATE ${tableName} SET (${keys.join(", ")}) = (${values.join(
+      ", "
+    )}) WHERE ${primaryKey} = @${primaryKey}`;
+    const updateStmt = db.prepare(update);
+
     this.insert = db.transaction((t: T) => insertStmt.run(t));
+    this.update = db.transaction((t: T) => updateStmt.run(t));
     this.insertMany = db.transaction((many: T[]) => {
       for (const t of many) insertStmt.run(t);
     });
@@ -50,6 +60,7 @@ export class SqlTable<T extends object> {
   }
 
   insert: (t: T) => void;
+  update: (t: T) => void;
   insertMany: (many: T[]) => void;
   selectAll: () => T[];
 }

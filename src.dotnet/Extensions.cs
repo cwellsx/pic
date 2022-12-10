@@ -92,6 +92,8 @@ namespace Core
             "ZoneIdentifier"
         };
 
+        static DateTime epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
         static Dictionary<VarEnum, Func<object, string>> converters = new Dictionary<VarEnum, Func<object, string>>
         {
             // not supported: VT_EMPTY, VT_NULL, VT_CLSID, VT_CF, VT_BLOB, VT_UNKNOWN, VT_STREAM
@@ -104,7 +106,7 @@ namespace Core
             { VarEnum.VT_UI8, o => Convert.ToString((ulong)o, System.Globalization.CultureInfo.InvariantCulture) },
             { VarEnum.VT_R8, o => Convert.ToString((double)o, System.Globalization.CultureInfo.InvariantCulture) },
             { VarEnum.VT_BOOL, o => Convert.ToString((bool)o, System.Globalization.CultureInfo.InvariantCulture) },
-            { VarEnum.VT_FILETIME, o => ((DateTime)o).ToUniversalTime().ToString("o") },
+            { VarEnum.VT_FILETIME, o => Convert.ToString((((DateTime)o).ToUniversalTime() - epoch).TotalMilliseconds, System.Globalization.CultureInfo.InvariantCulture) },
             { VarEnum.VT_LPWSTR, o => $"\"{(string)o}\"" }
         };
     }

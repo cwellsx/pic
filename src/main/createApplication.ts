@@ -5,7 +5,7 @@ import path from 'path';
 import { readConfig, writeConfig } from './configurationFile';
 import { registerFileProtocol } from './convertPathToUrl';
 import { createDotNetApi, DotNetApi } from './createDotNetApi';
-import { createSqlDatabase, SqlApi } from './createSqlDatabase';
+import { selectCats } from './createSqlDatabase';
 import { log, showNumber } from './log';
 import { readFiles } from './readFiles';
 
@@ -27,7 +27,7 @@ export function createApplication(webContents: WebContents): void {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir);
     return path.join(dir, "pic.db");
   };
-  const sqlApi: SqlApi = createSqlDatabase(getDbName());
+  const cats: string[] = selectCats(getDbName());
 
   // implement RendererApi using webContents.send
   const rendererApi: RendererApi = {
@@ -96,7 +96,7 @@ export function createApplication(webContents: WebContents): void {
     log("getGreeting");
     dotNetApi.getGreeting("World").then((greeting: string) => {
       log(greeting);
-      const names = sqlApi.selectCats().join(", ");
+      const names = cats.join(", ");
       log(names);
       rendererApi.setGreeting(`${greeting} from ${names}!`);
     });

@@ -13,6 +13,10 @@ Minimal behaviour:
 - Filter by properties - renderer
 - Add tags - renderer + main
 
+Performance
+
+- Implement isFresh to read each directory only once after start-up
+
 ## Later
 
 ### More Shell integration
