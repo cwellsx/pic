@@ -14,6 +14,7 @@ namespace Core
     {
         public static string SaveThumbnail(string path, string thumbnailPath, bool wantThumbnail, bool wantProperties, bool saveProperties = false)
         {
+            Timer.Start("FromParsingName");
             using (var so = ShellObject.FromParsingName(path))
             {
                 if (wantThumbnail) SaveThumbnail(so, thumbnailPath);
@@ -23,6 +24,7 @@ namespace Core
                 var properties = ReadProperties(so);
                 var result = string.Join("\r\n", properties.Select(property => $"{property.Item1}\t{property.Item2}"));
                 if (saveProperties) File.WriteAllText(Path.ChangeExtension(thumbnailPath, "csv"), result);
+                Timer.Start("FromParsingName.Dispose");
                 return result;
             }
         }
@@ -36,26 +38,34 @@ namespace Core
             }
         }
 
-        /*
-         * Interesting properties include
-         * - System.Keywords
-         * - System.Rating
-         * - System.RatingText
-         */
-
         static IEnumerable<(string, string)> ReadProperties(ShellObject so)
         {
-            //using (var shellProperties = so.Properties)
-            //{
-            //    var propertySystem = shellProperties.System;
-            //    var propertySystemVideo = propertySystem.Video;
-            //    var frameWidth = propertySystemVideo.FrameWidth.Value;
-            //}
-
+            Timer.Start("ShellPropertyCollection");
             using (var shellPropertyCollection = new ShellPropertyCollection(so))
             {
-                var list = shellPropertyCollection.Where(Extensions.IsWanted).Select(shellProperty => (shellProperty.Name(), shellProperty.StringValue())).ToList();
+                var list = new List<(string, string)>();
+                // according to measured Timer results, getting IShellProperty properties is expensive
+                // and IShellProperty.ValueAsObject is the most expensive
+                foreach (var shellProperty in shellPropertyCollection)
+                {
+                    Timer.Start("shellProperty.CanonicalName");
+                    var name = Extensions.Name(shellProperty.CanonicalName);
+                    if (!Extensions.IsNameWanted(name))
+                        continue;
+                    Timer.Start("shellProperty.Description.VarEnumType");
+                    var varEnumType = shellProperty.Description.VarEnumType;
+                    if (!Extensions.IsSupported(varEnumType))
+                        continue;
+                    Timer.Start("shellProperty.ValueAsObject");
+                    var valueAsObject = shellProperty.ValueAsObject;
+                    if (valueAsObject == null)
+                        continue;
+                    Timer.Start("StringValue");
+                    var stringValue = Extensions.StringValue(varEnumType, valueAsObject);
+                    list.Add((name, stringValue));
+                }
                 list.Sort((x, y) => (x.Item1 ?? string.Empty).CompareTo(y.Item1 ?? string.Empty));
+                Timer.Start("ShellPropertyCollection.Dispose");
                 return list;
             }
         }

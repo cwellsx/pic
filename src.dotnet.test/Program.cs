@@ -21,13 +21,14 @@ namespace Test
             foreach (var input in inputs)
             {
                 var filename = Path.Combine("Output", Path.ChangeExtension($"{Path.GetFileNameWithoutExtension(input)}", "jpg"));
-                Core.Api.SaveThumbnail(path: input, thumbnailPath: filename, true, true, true);
+                Core.Api.SaveThumbnail(path: input, thumbnailPath: filename, false, true, true);
             }
             TestPerformance();
         }
 
         private static void TestPerformance()
         {
+            Core.Timer.Enable();
             var files = GetFiles(@"C:\Users\Christopher\Documents").Where(isWanted).ToList();
             var start = DateTime.Now;
             foreach (var input in files)
@@ -35,6 +36,8 @@ namespace Test
                 Core.Api.SaveThumbnail(path: input, thumbnailPath: "", false, true, false);
             }
             Console.WriteLine($"{files.Count} files in {(DateTime.Now - start).TotalSeconds} seconds");
+            var log = Core.Timer.Log();
+            File.WriteAllText("Core.Timer.log", log);
         }
 
         private static IEnumerable<string> GetFiles(string directory)

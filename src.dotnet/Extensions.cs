@@ -8,39 +8,33 @@ namespace Core
 {
     static class Extensions
     {
-        internal static bool IsWanted(this IShellProperty shellProperty)
+        internal static string Name(string canonicalName)
         {
-            // sometimes e.g. System.Rating the property doesn't exist at all unless it's written by the user.
-            // or other times a property may exist but with a null value.
-            if (shellProperty.ValueAsObject == null) return false;
-            // if we don't want the value type
-            if (!IsSupported(shellProperty.Description.VarEnumType)) return false;
-            var name = shellProperty.Name();
+            if (canonicalName == null) return null;
+            if (!canonicalName.StartsWith("System.")) return null;
+            return canonicalName.Substring("System.".Length);
+        }
+
+        internal static bool IsNameWanted(string name)
+        {
             if (name == null) return false;
             if (wanted.Contains(name)) return true;
             if (unwantedPrefix.Any(s => name.StartsWith(s))) return false;
             return true;
         }
 
-        internal static string Name(this IShellProperty shellProperty)
-        {
-            var canonicalName = shellProperty.CanonicalName;
-            if (!canonicalName.StartsWith("System.")) return null;
-            return canonicalName.Substring("System.".Length);
-        }
-
-        internal static string StringValue(this IShellProperty shellProperty)
+        internal static string StringValue(VarEnum varEnumType, object valueAsObject)
         {
             // don't use the FormatForDisplay method because on my machine it sometimes returns different results from one run to the next
-            var varEnumType = shellProperty.Description.VarEnumType;
             var isArray = (varEnumType & VarEnum.VT_VECTOR) != 0;
             var converter = converters[varEnumType &= ~VarEnum.VT_VECTOR];
-            if (!isArray) return converter(shellProperty.ValueAsObject);
-            var array = (Array)shellProperty.ValueAsObject;
+            if (valueAsObject == null) return "null";
+            if (!isArray) return converter(valueAsObject);
+            var array = (Array)valueAsObject;
             return $"[{string.Join(",", array.Cast<object>().Select(o => converter(o)))}]";
         }
 
-        static bool IsSupported(VarEnum varEnumType)
+        internal static bool IsSupported(VarEnum varEnumType)
         {
             varEnumType &= ~VarEnum.VT_VECTOR;
             return converters.ContainsKey(varEnumType);
@@ -64,7 +58,7 @@ namespace Core
 
         static string[] unwantedPrefix = new[]
         {
-            "ApplicationName",
+            "App",
             "Audio",
             "ComputerName",
             "Date",
@@ -76,17 +70,23 @@ namespace Core
             "Is",
             "Item",
             "Kind",
+            "LastWriterPackageFamilyName",
+            "Link",
             "Media",
             "MIMEType",
+            "Network",
             "NotUserContent",
+            "Offline",
             "Parsing",
             "PerceivedType",
             "Photo",
             "Security",
             "SFGAOFlags",
-            "SharingStatus",
+            "Shar",
             "Shell.SFGAOFlagsStrings",
             "Size",
+            "Storage",
+            "Sync",
             "ThumbnailCacheId",
             "Video",
             "ZoneIdentifier"

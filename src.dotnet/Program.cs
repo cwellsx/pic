@@ -42,17 +42,21 @@ namespace Core
             {
                 try
                 {
+                    Log.Write($"SaveThumbnail({request.Path}, {request.WantThumbnail}, {request.WantProperties})");
                     var properties = Api.SaveThumbnail(request.Path, request.ThumbnailPath, request.WantThumbnail, request.WantProperties);
+                    Log.Write($"return");
                     return new ThumbnailResponse { Properties = properties };
                 }
                 catch (Exception ex)
                 {
                     Console.Error.WriteLine(ex.ToString());
+                    Log.Write($"exception {ex.ToString()}");
                     return new ThumbnailResponse { Exception = ex.ToString() };
                 }
             });
 
             connection.Listen();
+            Log.Close();
         }
     }
 }

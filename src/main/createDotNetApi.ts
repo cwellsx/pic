@@ -1,7 +1,7 @@
 import { ConnectionBuilder } from 'electron-cgi';
 
 import { stringToArray, trimString } from '../shared-types';
-import { log } from './log';
+import { log, logf } from './log';
 
 import type { FileProperties } from "../shared-types";
 
@@ -119,7 +119,12 @@ export function createDotNetApi(command: string, ...args: string[]): DotNetApi {
       return connection.send("getGreeting", name) as Promise<string>;
     },
     async createThumbnail(request: ThumbnailRequest): Promise<FileProperties> {
+      // testing with logf shows that main process and CGI are efficient
+      // most time is spent in the Core implementation
+      // there's no performance gain to be had e.g. by batching multiple requests per roundtrip
+      logf(`ThumbnailRequest(${request.path})`);
       const result = (await connection.send("createThumbnail", request)) as ThumbnailResponse;
+      logf(`ThumbnailResponse(${request.path}) ${result.exception ? "FAIL" : "OK"}`);
       if (result.exception) {
         log(result.exception);
         throw new Error(result.exception);
