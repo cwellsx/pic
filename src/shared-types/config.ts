@@ -2,6 +2,8 @@
 
 export type ConfigProperty = "documents" | "downloads" | "music" | "pictures" | "videos";
 
+export type ConfigMore = [path: string, enabled: boolean, exists: boolean];
+
 export type Config = {
   paths: {
     documents: boolean;
@@ -10,7 +12,7 @@ export type Config = {
     pictures: boolean;
     videos: boolean;
   };
-  more?: string[];
+  more?: ConfigMore[];
 };
 
 const defaultConfig: Config = {

@@ -29,6 +29,7 @@ namespace Core
 
             var connection = new ConnectionBuilder()
                 .WithLogging()
+                .UsingEncoding(System.Text.Encoding.UTF8)
                 .Build();
 
             connection.On<string, string>("getGreeting", name =>

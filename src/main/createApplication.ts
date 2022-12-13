@@ -7,7 +7,7 @@ import { registerFileProtocol } from './convertPathToUrl';
 import { createDotNetApi, DotNetApi } from './createDotNetApi';
 import { selectCats } from './createSqlDatabase';
 import { log, showNumber } from './log';
-import { readFiles } from './readFiles';
+import { readFiles, validateConfig } from './readFiles';
 
 import type { Config, FileInfo, MainApi, RendererApi } from "../shared-types";
 declare const CORE_EXE: string;
@@ -60,6 +60,7 @@ export function createApplication(webContents: WebContents): void {
 
     saveConfig(config: Config): Promise<Config> {
       log("saveConfig");
+      config = validateConfig(config);
       writeConfig(config);
       readFiles(config, rendererApi.showStatusText, dotNetApi)
         .then((files) => {
@@ -89,8 +90,9 @@ export function createApplication(webContents: WebContents): void {
   bindIpcMain();
 
   function onRendererLoaded(): void {
-    log("get/showConfig");
+    log("readConfig");
     const config = readConfig();
+    log("showConfig");
     rendererApi.showConfig(config);
 
     log("getGreeting");

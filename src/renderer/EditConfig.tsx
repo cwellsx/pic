@@ -2,7 +2,7 @@ import './editConfig.sass';
 
 import * as React from 'react';
 
-import type { Config, ConfigProperty } from "../shared-types";
+import type { Config, ConfigProperty, ConfigMore } from "../shared-types";
 
 type EditConfigProps = {
   config: Config;
@@ -11,6 +11,8 @@ type EditConfigProps = {
 
 export const EditConfig: React.FunctionComponent<EditConfigProps> = (props: EditConfigProps) => {
   const { config, setConfig } = props;
+
+  const [temp, setTemp] = React.useState<string>("");
 
   const renderInput = (property: ConfigProperty) => {
     const title = property.charAt(0).toUpperCase() + property.slice(1);
@@ -30,5 +32,53 @@ export const EditConfig: React.FunctionComponent<EditConfigProps> = (props: Edit
     );
   };
 
-  return <ul id="editConfig">{Object.keys(config.paths).map((key) => renderInput(key as ConfigProperty))}</ul>;
+  const renderMore = (tuple: ConfigMore, index: number) => {
+    const [path, enabled, exists] = tuple;
+    const onChange = () => {
+      const clone = { ...config };
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const more = clone.more!;
+      more[index][1] = !enabled;
+      setConfig(clone);
+    };
+    const onDelete = () => {
+      const clone = { ...config };
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const more = clone.more!;
+      more.splice(index, 1);
+      setConfig(clone);
+    };
+    return (
+      <li key={path}>
+        <label>
+          <input type="checkbox" checked={enabled} onChange={onChange} disabled={!exists} />
+          {path}
+        </label>
+        &nbsp;<span onClick={onDelete}>&#x274C;</span>
+      </li>
+    );
+  };
+
+  const onChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setTemp(event.target.value);
+  };
+
+  const onKeyUp = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    const clone = { ...config };
+    if (!clone.more) clone.more = [];
+    clone.more.push([temp, false, false]);
+    setConfig(clone);
+  };
+
+  return (
+    <>
+      <ul id="editConfig">
+        {Object.keys(config.paths).map((key) => renderInput(key as ConfigProperty))}
+        {config.more?.map(renderMore)}
+      </ul>
+      <input type="text" value={temp} onChange={onChange} onKeyUp={onKeyUp} placeholder="e.g. D:\ or E:\media" />
+    </>
+  );
 };

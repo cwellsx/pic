@@ -1,4 +1,5 @@
 import { app } from 'electron';
+import fsSync from 'fs';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -37,6 +38,15 @@ type RootedFiles = {
 };
 
 const thumbnailDirectories = new Set<string>();
+
+function getDirExists(rootDir: string): boolean {
+  try {
+    const stat = fsSync.statSync(rootDir);
+    return stat.isDirectory();
+  } catch {
+    return false;
+  }
+}
 
 async function getThumbnailExists(thumbnailPath: string, fileStatus: FileStatus): Promise<boolean> {
   try {
@@ -250,6 +260,13 @@ export function readFiles(
       roots.push({ rooted, result: [] });
     }
   });
+  config.more?.forEach((tuple) => {
+    const [path, enabled, exists] = tuple;
+    if (enabled && exists) {
+      const rooted: Rooted = { rootName: null, rootDir: path, leafDir: path };
+      roots.push({ rooted, result: [] });
+    }
+  });
 
   // create and start a new reader
   const result = new Promise<FileInfo[]>((resolve, reject) => {
@@ -260,4 +277,14 @@ export function readFiles(
   });
   // this Promise will be resolved or rejected by the Reader
   return result;
+}
+
+export function validateConfig(config: Config): Config {
+  if (!config.more) return config;
+  for (const tuple of config.more) {
+    const rootDir = tuple[0];
+    const exists = getDirExists(rootDir);
+    tuple[2] = exists;
+  }
+  return config;
 }
