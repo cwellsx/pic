@@ -6,12 +6,12 @@ The purpose of this list to delay until later what isn't needed immediately.
 
 Minimal behaviour:
 
-- Save properties - main
 - Display properties - renderer
 - Sort by properties - renderer
 - Group by properties - renderer
 - Filter by properties - renderer
 - Add tags - renderer + main
+- Variable thumbnail display size
 
 Performance
 

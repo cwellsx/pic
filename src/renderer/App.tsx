@@ -4,8 +4,8 @@ import * as React from 'react';
 
 import { FileInfo, getDefaultConfig } from '../shared-types';
 import { EditConfig } from './EditConfig';
-import { RootPicker } from './RootPicker';
 import { ShowFiles } from './ShowFiles';
+import { ShowFonts } from './ShowFonts';
 import { ShowGreeting } from './ShowGreeting';
 import { StatusBar } from './StatusBar';
 
@@ -22,7 +22,6 @@ export const bindIpc: BindIpc = window.preloadApis.bindIpc;
 const App: React.FunctionComponent = () => {
   const [greeting, setGreeting] = React.useState("Hello...");
 
-  const [root, setRoot] = React.useState<string>("");
   const [config, setConfig] = React.useState<Config>(getDefaultConfig());
   const [status, setStatus] = React.useState<string>("Ready");
   const [files, setFiles] = React.useState<FileInfo[]>([]);
@@ -64,13 +63,13 @@ const App: React.FunctionComponent = () => {
       <div id="settings">
         Settings
         <EditConfig config={config} setConfig={saveConfig} />
+        <ShowFonts />
       </div>
       <div id="footer">
         <StatusBar status={status} />
       </div>
       <div id="main">
         <ShowGreeting greeting={greeting} />
-        <RootPicker root={root} setRoot={setRoot} />
         <ShowFiles files={files} />
       </div>
     </React.StrictMode>
