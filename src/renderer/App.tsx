@@ -2,8 +2,9 @@ import './app.sass';
 
 import * as React from 'react';
 
-import { FileInfo, getDefaultConfig } from '../shared-types';
+import { ConfigUI, FileInfo, getDefaultConfig } from '../shared-types';
 import { EditConfig } from './EditConfig';
+import { EditSize } from './EditSize';
 import { ShowFiles } from './ShowFiles';
 import { ShowFonts } from './ShowFonts';
 import { ShowGreeting } from './ShowGreeting';
@@ -23,6 +24,7 @@ const App: React.FunctionComponent = () => {
   const [greeting, setGreeting] = React.useState("Hello...");
 
   const [config, setConfig] = React.useState<Config>(getDefaultConfig());
+  const [configUI, setConfigUI] = React.useState<ConfigUI>({});
   const [status, setStatus] = React.useState<string>("Ready");
   const [files, setFiles] = React.useState<FileInfo[]>([]);
 
@@ -41,6 +43,9 @@ const App: React.FunctionComponent = () => {
       showConfig(config: Config): void {
         setConfig(config);
       },
+      showConfigUI(configUI: ConfigUI): void {
+        setConfigUI(configUI);
+      },
       showStatusText(message: string): void {
         setStatus(message);
       },
@@ -53,9 +58,14 @@ const App: React.FunctionComponent = () => {
 
   const saveConfig = async (config: Config): Promise<void> => {
     // pass the new config to the main process and afterwards into local state
-    // mainApi.saveConfig(config);
     const returned = await mainApi.saveConfig(config);
     setConfig(returned);
+  };
+
+  const saveConfigUI = async (configUI: ConfigUI): Promise<void> => {
+    // pass the new config to the main process but don't wait for that to complete
+    mainApi.saveConfigUI(configUI);
+    setConfigUI(configUI);
   };
 
   return (
@@ -64,6 +74,7 @@ const App: React.FunctionComponent = () => {
         Settings
         <EditConfig config={config} setConfig={saveConfig} />
         <ShowFonts />
+        <EditSize configUI={configUI} setConfigUI={saveConfigUI} />
       </div>
       <div id="footer">
         <StatusBar status={status} />

@@ -2,14 +2,14 @@ import { app, BrowserWindow, ipcMain, IpcMainEvent, IpcMainInvokeEvent, WebConte
 import fs from 'fs';
 import path from 'path';
 
-import { readConfig, writeConfig } from './configurationFile';
+import { readConfig, readConfigUI, writeConfig, writeConfigUI } from './configFiles';
 import { registerFileProtocol } from './convertPathToUrl';
 import { createDotNetApi, DotNetApi } from './createDotNetApi';
 import { selectCats } from './createSqlDatabase';
 import { log, showNumber } from './log';
 import { readFiles, validateConfig } from './readFiles';
 
-import type { Config, FileInfo, MainApi, RendererApi } from "../shared-types";
+import type { Config, ConfigUI, FileInfo, MainApi, RendererApi } from "../shared-types";
 declare const CORE_EXE: string;
 log(`CORE_EXE is ${CORE_EXE}`);
 log(`cwd is ${process.cwd()}`);
@@ -37,6 +37,9 @@ export function createApplication(webContents: WebContents): void {
     showConfig: (config: Config) => {
       webContents.send("showConfig", config);
     },
+    showConfigUI: (configUI: ConfigUI) => {
+      webContents.send("showConfigUI", configUI);
+    },
     showStatusText: (message: string) => {
       webContents.send("showStatusText", message);
     },
@@ -44,6 +47,19 @@ export function createApplication(webContents: WebContents): void {
       webContents.send("showFiles", files);
     },
   };
+
+  function showFiles(config: Config): void {
+    readFiles(config, rendererApi.showStatusText, dotNetApi)
+      .then((files) => {
+        log(`readFiles: found ${files.length} files`);
+        rendererApi.showStatusText(`${showNumber(files.length)} files`);
+        rendererApi.showFiles(files);
+      })
+      .catch((reason) => {
+        log(`readFiles failed: ${"" + reason}`);
+        rendererApi.showStatusText(`readFiles failed: ${"" + reason}`);
+      });
+  }
 
   // this is a light-weight class which implements the MainApi by binding it to BrowserWindow instance at run-time
   // a new instance of this class is created for each event
@@ -62,17 +78,13 @@ export function createApplication(webContents: WebContents): void {
       log("saveConfig");
       config = validateConfig(config);
       writeConfig(config);
-      readFiles(config, rendererApi.showStatusText, dotNetApi)
-        .then((files) => {
-          log(`readFiles: found ${files.length} files`);
-          rendererApi.showStatusText(`${showNumber(files.length)} files`);
-          rendererApi.showFiles(files);
-        })
-        .catch((reason) => {
-          log(`readFiles failed: ${"" + reason}`);
-          rendererApi.showStatusText(`readFiles failed: ${"" + reason}`);
-        });
+      showFiles(config);
       return Promise.resolve(config);
+    }
+
+    saveConfigUI(configUI: ConfigUI): void {
+      log("saveConfigUI");
+      writeConfigUI(configUI);
     }
   }
 
@@ -80,6 +92,7 @@ export function createApplication(webContents: WebContents): void {
     // bind ipcMain to the methods of MainApiImpl
     ipcMain.on("setTitle", (event, title) => getApi(event).setTitle(title));
     ipcMain.handle("saveConfig", (event, config) => getApi(event).saveConfig(config));
+    ipcMain.handle("saveConfigUI", (event, configUI) => getApi(event).saveConfigUI(configUI));
 
     function getApi(event: IpcMainEvent | IpcMainInvokeEvent): MainApi {
       const window = BrowserWindow.fromWebContents(event.sender);
@@ -94,7 +107,14 @@ export function createApplication(webContents: WebContents): void {
     const config = readConfig();
     log("showConfig");
     rendererApi.showConfig(config);
+    log("readConfigUI");
+    const configUI = readConfigUI();
+    log("showConfigUI");
+    rendererApi.showConfigUI(configUI);
+    showFiles(config);
+  }
 
+  function greetings(): void {
     log("getGreeting");
     dotNetApi.getGreeting("World").then((greeting: string) => {
       log(greeting);
@@ -104,5 +124,6 @@ export function createApplication(webContents: WebContents): void {
     });
   }
 
-  webContents.once("did-finish-load", onRendererLoaded);
+  webContents.once("did-finish-load", greetings);
+  webContents.addListener("did-finish-load", onRendererLoaded);
 }

@@ -4,7 +4,7 @@ import fs from 'fs/promises';
 import path from 'path';
 
 import { Config, ConfigProperty, FileInfo, FileStatus, getDefaultConfig, Rooted } from '../shared-types';
-import { readFileExtensions } from './configurationFile';
+import { readFileExtensions } from './configFiles';
 import { convertPathToUrl } from './convertPathToUrl';
 import { DotNetApi } from './createDotNetApi';
 import { log } from './log';

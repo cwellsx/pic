@@ -3,26 +3,20 @@
   display: flex
   flex-wrap: wrap
   align-items: baseline
+  --thumb-size: 96px
 
   .item
-    width: 270px
-    padding: 0 10px
-
-  .thumbnail
-    max-height: 250px
-
-  .item
-    width: 104px
+    width: calc(8px + var(--thumb-size))
     padding: 0 4px
 
   .thumbnail
-    max-height: 96px
+    max-height: var(--thumb-size)
 
   img
     object-fit: contain
     object-position: bottom
-    width: 96px
-    height: 96px
+    width: var(--thumb-size)
+    height: var(--thumb-size)
 
   span
     display: -webkit-box

@@ -1,4 +1,4 @@
-import { Config } from './config';
+import { Config, ConfigUI } from './config';
 import { FileInfo } from './fileInfo';
 
 /*
@@ -24,12 +24,14 @@ import { FileInfo } from './fileInfo';
 export interface MainApi {
   setTitle: (title: string) => void;
   saveConfig: (config: Config) => Promise<Config>;
+  saveConfigUI: (configUI: ConfigUI) => void;
 }
 
 // this Api is available to the main process and its functions are all void
 export interface RendererApi {
   setGreeting: (greeting: string) => void;
   showConfig: (config: Config) => void;
+  showConfigUI: (configUI: ConfigUI) => void;
   showStatusText: (message: string) => void;
   showFiles: (files: FileInfo[]) => void;
 }

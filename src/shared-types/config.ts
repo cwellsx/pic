@@ -28,3 +28,7 @@ const defaultConfig: Config = {
 export const getDefaultConfig: () => Config = () => {
   return { ...defaultConfig };
 };
+
+export type ConfigUI = {
+  size?: number; // 96 through 256
+};
