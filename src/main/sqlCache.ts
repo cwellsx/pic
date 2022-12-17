@@ -2,6 +2,7 @@ import { Database } from 'better-sqlite3';
 
 import { FileInfo, FileProperties, FileStatus } from '../shared-types';
 import { createSqlDatabase } from './createSqlDatabase';
+import { log } from './log';
 import { SqlTable } from './sqlTable';
 
 const cacheCaches = false;
@@ -47,7 +48,7 @@ export class SqlCache {
   done: () => void;
 
   constructor(db: Database) {
-    const sqlTable = new SqlTable<FileInfo>(db, "fileinfo", "path", exemplar);
+    const sqlTable = new SqlTable<FileInfo>(db, "fileinfo", "path", (key) => key === "rootName", exemplar);
     const all = new Map<string, FileInfo>(sqlTable.selectAll().map((row) => [row.path, row]));
 
     this.read = (file: FileStatus) => {
@@ -64,7 +65,7 @@ export class SqlCache {
 
     this.done = () => {
       const result = db.pragma("wal_checkpoint(TRUNCATE)");
-      console.log(`wal_checkpoint: ${JSON.stringify(result)}`);
+      log(`wal_checkpoint: ${JSON.stringify(result)}`);
       if (!cacheCaches) db.close;
     };
   }

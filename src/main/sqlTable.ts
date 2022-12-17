@@ -2,10 +2,6 @@ import { Database } from 'better-sqlite3';
 
 type columnType = "TEXT" | "INT" | "REAL";
 
-function getColumnConstraint(isPrimary: boolean): string {
-  return isPrimary ? "NOT NULL PRIMARY KEY" : "NOT NULL";
-}
-
 function getColumnType(value: unknown): columnType {
   switch (typeof value) {
     case "string":
@@ -17,21 +13,41 @@ function getColumnType(value: unknown): columnType {
   }
 }
 
-function getColumnDefinition(entry: [string, undefined], primaryKey: string): string {
-  return `${entry[0]} ${getColumnType(entry[1])} ${getColumnConstraint(entry[0] == primaryKey)}`;
+function getColumnDefinition(entry: [string, undefined], constraint: string): string {
+  return `${entry[0]} ${getColumnType(entry[1])} ${constraint}`;
+}
+
+const isVerbose = false;
+function verbose(message: string) {
+  if (isVerbose) console.log(message);
 }
 
 export class SqlTable<T extends object> {
   // we need to list of keys in T to create corresponding SQL columns
   // but type info is only available at compile-time, it doesn't exist at run-time
   // so instead this API expects a sample run-time instance of T
-  constructor(db: Database, tableName: string, primaryKey: keyof T, t: T) {
+  constructor(
+    db: Database,
+    tableName: string,
+    primaryKey: keyof T,
+    isNullable: ((key: keyof T) => boolean) | boolean,
+    t: T
+  ) {
     // do everything using arrow functions in the constructor, avoid using this anywhere
     // https://github.com/WiseLibs/better-sqlite3/issues/589#issuecomment-1336812715
     if (typeof primaryKey !== "string") throw new Error("primaryKey must be a string");
 
+    function isKeyNullable(key: string): boolean {
+      if (typeof isNullable === "boolean") return isNullable;
+      return isNullable(key as keyof T);
+    }
+
     const entries = Object.entries(t);
-    const columnDefs = entries.map((entry) => getColumnDefinition(entry, primaryKey));
+    const columnDefs = entries.map((entry) => {
+      const key = entry[0];
+      const constraint = key === primaryKey ? "NOT NULL PRIMARY KEY" : !isKeyNullable(key) ? "NOT NULL" : "";
+      return getColumnDefinition(entry, constraint);
+    });
     const createTable = `CREATE TABLE IF NOT EXISTS ${tableName} (${columnDefs.join(", ")})`;
     db.prepare(createTable).run();
 
@@ -49,8 +65,16 @@ export class SqlTable<T extends object> {
     )}) WHERE ${primaryKey} = @${primaryKey}`;
     const updateStmt = db.prepare(update);
 
-    this.insert = db.transaction((t: T) => insertStmt.run(t));
-    this.update = db.transaction((t: T) => updateStmt.run(t));
+    this.insert = db.transaction((t: T) => {
+      const info = insertStmt.run(t);
+      if (info.changes !== 1) throw new Error("insert failed");
+      verbose(`inserted row #${info.lastInsertRowid}`);
+    });
+    this.update = db.transaction((t: T) => {
+      const info = updateStmt.run(t);
+      if (info.changes !== 1) throw new Error("insert failed");
+      verbose(`updated row #${info.lastInsertRowid}`);
+    });
     this.insertMany = db.transaction((many: T[]) => {
       for (const t of many) insertStmt.run(t);
     });

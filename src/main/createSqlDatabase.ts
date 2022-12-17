@@ -33,7 +33,7 @@ export function createSqlDatabase(filename: string): Database {
 export function selectCats(filename: string): string[] {
   const db = createSqlDatabase(filename);
 
-  const catTable = new SqlTable<Cat>(db, "cat", "name", { name: "name", age: 1 });
+  const catTable = new SqlTable<Cat>(db, "cat", "name", false, { name: "name", age: 1 });
 
   let rows = catTable.selectAll();
 

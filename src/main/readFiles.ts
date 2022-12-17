@@ -58,7 +58,7 @@ async function getThumbnailExists(thumbnailPath: string, fileStatus: FileStatus)
 }
 
 async function getThumbnailDir(rooted: Rooted): Promise<string> {
-  const directory = path.join(rooted.rootDir, ".pic", path.relative(rooted.rootDir, rooted.leafDir));
+  const directory = path.join(rooted.rootDir + ".pic", path.relative(rooted.rootDir, rooted.leafDir));
   if (!thumbnailDirectories.has(directory)) {
     verbose(`creating directory ${directory}`);
     await fs.mkdir(directory, { recursive: true });
@@ -141,7 +141,7 @@ class ReadThumbnails extends ReaderBase {
               sqlCache.save(fileInfo);
             }
           } catch (e) {
-            verbose(`${thumbnailPath} failed`);
+            log(`${thumbnailPath} failed: ${e}`);
             continue;
           }
         } else verbose(`${thumbnailPath} already exists`);
