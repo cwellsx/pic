@@ -20,6 +20,18 @@ declare global {
 export const mainApi: MainApi = window.preloadApis.mainApi;
 export const bindIpc: BindIpc = window.preloadApis.bindIpc;
 
+// must invoke bindIpc a.s.a.p. because main will invoke functions when the "did-finish-load" event is run.
+// if we invoke bindIpc in useEffects hook then that's too late i.e. after the main function has made API calls
+// so this emulates a constructor, see https://dev.to/bytebodger/constructors-in-functional-components-with-hooks-280m
+
+const useConstructor = (callBack: () => void): void => {
+  // this hook invokes the callback immedately once and only once
+  const [hasBeenCalled, setHasBeenCalled] = React.useState(false);
+  if (hasBeenCalled) return;
+  callBack();
+  setHasBeenCalled(true);
+};
+
 const App: React.FunctionComponent = () => {
   const [greeting, setGreeting] = React.useState("Hello...");
 
@@ -33,14 +45,15 @@ const App: React.FunctionComponent = () => {
   // }, [root]);
 
   // define the API to pass to the bindIpc function
-  // use useEffect so that we only do this once
-  React.useEffect(() => {
+  // use useConstructor so that we do this immediately but only do this once
+  useConstructor(() => {
     const rendererApi: RendererApi = {
       setGreeting(greeting: string): void {
         setGreeting(greeting);
         mainApi.setTitle(greeting);
       },
       showConfig(config: Config): void {
+        console.log(`setConfig(${JSON.stringify(config)})`);
         setConfig(config);
       },
       showConfigUI(configUI: ConfigUI): void {
@@ -54,7 +67,7 @@ const App: React.FunctionComponent = () => {
       },
     };
     bindIpc(rendererApi);
-  }, []);
+  });
 
   const saveConfig = async (config: Config): Promise<void> => {
     // pass the new config to the main process and afterwards into local state
