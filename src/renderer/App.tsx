@@ -5,6 +5,7 @@ import * as React from 'react';
 import { ConfigUI, FileInfo, getDefaultConfig } from '../shared-types';
 import { EditConfig } from './EditConfig';
 import { EditSize } from './EditSize';
+import { reducer } from './reducer';
 import { ShowFiles } from './ShowFiles';
 import { ShowFonts } from './ShowFonts';
 import { ShowGreeting } from './ShowGreeting';
@@ -38,7 +39,7 @@ const App: React.FunctionComponent = () => {
   const [config, setConfig] = React.useState<Config>(getDefaultConfig());
   const [configUI, setConfigUI] = React.useState<ConfigUI>({});
   const [status, setStatus] = React.useState<string>("Ready");
-  const [files, setFiles] = React.useState<FileInfo[]>([]);
+  const [state, dispatch] = React.useReducer(reducer, { files: [], selected: [], previousSelection: undefined });
 
   // React.useEffect(() => {
   //   setStatus(root);
@@ -63,7 +64,7 @@ const App: React.FunctionComponent = () => {
         setStatus(message);
       },
       showFiles(files: FileInfo[]): void {
-        setFiles(files);
+        dispatch({ type: "SetFiles", files });
       },
     };
     bindIpc(rendererApi);
@@ -94,7 +95,7 @@ const App: React.FunctionComponent = () => {
       </div>
       <div id="main">
         <ShowGreeting greeting={greeting} />
-        <ShowFiles files={files} />
+        <ShowFiles state={state} dispatch={dispatch} />
       </div>
     </React.StrictMode>
   );

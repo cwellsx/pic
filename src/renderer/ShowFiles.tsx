@@ -3,6 +3,7 @@ import './showFiles.sass';
 import * as React from 'react';
 
 import { FileInfo } from '../shared-types';
+import { Action, RenderedState } from './reducer';
 
 function getFilename(file: FileInfo): string {
   const path = file.path;
@@ -11,39 +12,21 @@ function getFilename(file: FileInfo): string {
 }
 
 type ShowFilesProps = {
-  files: FileInfo[];
+  state: RenderedState;
+  dispatch: (action: Action) => void;
 };
 
 export const ShowFiles: React.FunctionComponent<ShowFilesProps> = (props: ShowFilesProps) => {
-  const { files } = props;
-  const [selected, setSelected] = React.useState<boolean[]>(new Array(files.length).fill(false));
-  const [previous, setPrevious] = React.useState<number | undefined>(undefined);
+  const { state, dispatch } = props;
 
   const renderFile = (file: FileInfo, index: number) => {
     const clickEvent = (e: React.MouseEvent<HTMLDivElement>) => {
       e.preventDefault();
       const isCtrlKey = e.ctrlKey;
       const isShiftKey = e.shiftKey;
-      const cloned = [...selected];
-      if (isShiftKey) {
-        let other = previous ?? index;
-        // ensure index < other
-        if (index > other) [other, index] = [index, other];
-        for (let i = 0; i < files.length; ++i) {
-          if (i >= index && i <= other) cloned[i] = true;
-          else if (!isCtrlKey) cloned[i] = false;
-        }
-      } else {
-        if (isCtrlKey) cloned[index] = !cloned[index];
-        else {
-          cloned.fill(false);
-          cloned[index] = true;
-        }
-      }
-      setPrevious(index);
-      setSelected(cloned);
+      dispatch({ type: "MouseClick", isCtrlKey, isShiftKey, index });
     };
-    const isSelected = selected[index];
+    const isSelected = state.selected[index];
     const className = !isSelected ? "item" : "item selected";
     return (
       <div className={className} key={file.path} onClick={clickEvent}>
@@ -53,5 +36,5 @@ export const ShowFiles: React.FunctionComponent<ShowFilesProps> = (props: ShowFi
     );
   };
 
-  return <div id="showFiles">{files.map(renderFile)}</div>;
+  return <div id="showFiles">{state.files.map(renderFile)}</div>;
 };
