@@ -5,10 +5,10 @@ import * as React from 'react';
 import { FileInfo } from '../shared-types';
 import { Action, RenderedState } from './reducer';
 
-function getFilename(file: FileInfo): string {
+export function getFilename(file: FileInfo): string {
   const path = file.path;
   const split = path.split("\\");
-  return split[split.length - 1].toLowerCase();
+  return split[split.length - 1];
 }
 
 type ShowFilesProps = {

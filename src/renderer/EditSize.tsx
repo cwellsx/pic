@@ -10,17 +10,18 @@ type EditSizeProps = {
 export const EditSize: React.FunctionComponent<EditSizeProps> = (props: EditSizeProps) => {
   const { configUI, setConfigUI } = props;
   const size = configUI.size ?? 96;
+  document.getElementById("showFiles")?.style.setProperty("--thumb-size", size + "px");
+
   const onChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const newSize = parseInt(event.target.value);
     const clone = { ...configUI };
     clone.size = newSize;
     setConfigUI(clone);
-    document.getElementById("showFiles")?.style.setProperty("--thumb-size", newSize + "px");
   };
+
   return (
     <div>
       <input type="range" min={96} max={256} onChange={onChange} defaultValue={size} />
-      {"" + size}
     </div>
   );
 };

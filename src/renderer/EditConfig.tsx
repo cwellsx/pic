@@ -78,14 +78,9 @@ export const EditConfig: React.FunctionComponent<EditConfigProps> = (props: Edit
         {Object.keys(config.paths).map((key) => renderInput(key as ConfigProperty))}
         {config.more?.map(renderMore)}
       </ul>
-      <input
-        id="more"
-        type="text"
-        value={temp}
-        onChange={onChange}
-        onKeyUp={onKeyUp}
-        placeholder="e.g. D:\ or E:\media"
-      />
+      <div>
+        <input type="text" value={temp} onChange={onChange} onKeyUp={onKeyUp} placeholder="e.g. D:\ or E:\media" />
+      </div>
     </>
   );
 };

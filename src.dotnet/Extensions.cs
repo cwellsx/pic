@@ -85,6 +85,7 @@ namespace Core
             "Shar",
             "Shell.SFGAOFlagsStrings",
             "Size",
+            "SoftwareUsed",
             "Storage",
             "Sync",
             "ThumbnailCacheId",

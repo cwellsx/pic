@@ -9,6 +9,7 @@ import { reducer } from './reducer';
 import { ShowFiles } from './ShowFiles';
 import { ShowFonts } from './ShowFonts';
 import { ShowGreeting } from './ShowGreeting';
+import { ShowProperties } from './ShowProperties';
 import { StatusBar } from './StatusBar';
 
 import type { BindIpc, Config, MainApi, PreloadApis, RendererApi } from "../shared-types";
@@ -89,6 +90,9 @@ const App: React.FunctionComponent = () => {
         <EditConfig config={config} setConfig={saveConfig} />
         <ShowFonts />
         <EditSize configUI={configUI} setConfigUI={saveConfigUI} />
+      </div>
+      <div id="properties">
+        <ShowProperties state={state} />
       </div>
       <div id="footer">
         <StatusBar status={status} />

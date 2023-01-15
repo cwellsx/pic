@@ -67,6 +67,11 @@ function readFileProperties(properties: string): FileProperties {
     return parseInt(result);
   }
 
+  function readInteger2(key1: string, key2: string): number {
+    const result = readInteger(key1);
+    return result ? result : readInteger(key2);
+  }
+
   function readFloat(key: string): number {
     const result = read(key);
     if (!result) return 0;
@@ -82,14 +87,14 @@ function readFileProperties(properties: string): FileProperties {
   }
 
   const contentType = readString("ContentType");
-  const duration = readInteger("Duration");
-  const width = readInteger("Image.HorizontalSize") ?? readInteger("Video.FrameWidth");
-  const height = readInteger("Image.VerticalSize") ?? readInteger("Video.FrameHeight");
+  const duration = readInteger("Media.Duration");
+  const width = readInteger2("Image.HorizontalSize", "Video.FrameWidth");
+  const height = readInteger2("Image.VerticalSize", "Video.FrameHeight");
   const rating = readInteger("Rating");
   const ratingText = readString("RatingText");
   const keywords = readArray("Keywords");
-  const cameraModel = readString("CameraModel");
-  const dateTaken = readInteger("DateTaken");
+  const cameraModel = readString("Photo.CameraModel");
+  const dateTaken = readInteger("Photo.DateTaken");
   const latitudeDecimal = readFloat("GPS.LatitudeDecimal");
   const longitudeDecimal = readFloat("GPS.LongitudeDecimal");
   const more = lines.length > 0 ? lines.map((line) => line.join("\t")).join("\r\n") : "";
