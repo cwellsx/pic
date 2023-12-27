@@ -1,14 +1,14 @@
-import { app } from 'electron';
-import fsSync from 'fs';
-import fs from 'fs/promises';
-import path from 'path';
+import { app } from "electron";
+import fsSync from "fs";
+import fs from "fs/promises";
+import path from "path";
 
-import { Config, ConfigProperty, FileInfo, FileStatus, getDefaultConfig, Rooted } from '../shared-types';
-import { readFileExtensions } from './configFiles';
-import { convertPathToUrl } from './convertPathToUrl';
-import { DotNetApi } from './createDotNetApi';
-import { log } from './log';
-import { createSqlCache } from './sqlCache';
+import { Config, ConfigProperty, FileInfo, FileStatus, getDefaultConfig, Rooted } from "../shared-types";
+import { readFileExtensions } from "./configFiles";
+import { convertPathToUrl } from "./convertPathToUrl";
+import { DotNetApi } from "./createDotNetApi";
+import { log } from "./log";
+import { createSqlCache } from "./sqlCache";
 
 /*
   I guess there's no point in multi-threading this using workers because it will be I/O-bound and not CPU-bound.
@@ -87,7 +87,7 @@ class ReadThumbnails extends ReaderBase {
   index = 0;
   total = 0;
   rooted: Rooted | undefined;
-  intervalObj?: NodeJS.Timer;
+  intervalObj?: NodeJS.Timeout;
 
   start(roots: RootedFiles[]): void {
     this.context.showStatusText("Reading thumbnails");

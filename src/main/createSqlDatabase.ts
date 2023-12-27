@@ -1,8 +1,8 @@
-import sqlite, { Database } from 'better-sqlite3';
-import fs from 'fs';
-import path from 'path';
+import sqlite, { Database } from "better-sqlite3";
+import fs from "fs";
+import path from "path";
 
-import { SqlTable } from './sqlTable';
+import { SqlTable } from "./sqlTable";
 
 // https://github.com/electron-userland/electron-forge/issues/1224#issuecomment-606649565
 // https://www.npmjs.com/package/better-sqlite3

@@ -1,5 +1,5 @@
-import { plugins } from './webpack.plugins';
-import { rules } from './webpack.rules';
+import { plugins } from "./webpack.plugins";
+import { rules } from "./webpack.rules";
 
 import type { Configuration } from "webpack";
 
